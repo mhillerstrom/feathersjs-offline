@@ -1,10 +1,10 @@
 # feathers-offline-owndata
 
-[![Build Status](https://travis-ci.org/feathersjs/feathers-offline-owndata.png?branch=master)](https://travis-ci.org/feathersjs/feathers-offline-owndata)
-[![Code Climate](https://codeclimate.com/github/feathersjs/feathers-offline-owndata/badges/gpa.svg)](https://codeclimate.com/github/feathersjs/feathers-offline-owndata)
-[![Test Coverage](https://codeclimate.com/github/feathersjs/feathers-offline-owndata/badges/coverage.svg)](https://codeclimate.com/github/feathersjs/feathers-offline-owndata/coverage)
-[![Dependency Status](https://img.shields.io/david/feathersjs/feathers-offline-owndata.svg?style=flat-square)](https://david-dm.org/feathersjs/feathers-offline-owndata)
-[![Download Status](https://img.shields.io/npm/dm/feathers-offline-owndata.svg?style=flat-square)](https://www.npmjs.com/package/feathers-offline-owndata)
+[![Build Status](https://travis-ci.org/mhillerstrom/feathersjs-offline-owndata.png?branch=master)](https://travis-ci.org/mhillerstrom/feathersjs-offline-owndata)
+[![Code Climate](https://codeclimate.com/github/mhillerstrom/feathersjs-offline-owndata/badges/gpa.svg)](https://codeclimate.com/github/mhillerstrom/feathersjs-offline-owndata)
+[![Test Coverage](https://codeclimate.com/github/mhillerstrom/feathersjs-offline-owndata/badges/coverage.svg)](https://codeclimate.com/github/mhillerstrom/feathersjs-offline-owndata/coverage)
+[![Dependency Status](https://img.shields.io/david/mhillerstrom/feathersjs-offline-owndata.svg?style=flat-square)](https://david-dm.org/mhillerstrom/feathersjs-offline-owndata)
+[![Download Status](https://img.shields.io/npm/dm/feathersjs-offline-owndata.svg?style=flat-square)](https://www.npmjs.com/package/feathersjs-offline-owndata)
 
 > Offline-first own-data/own-net replication with optimistic updates.
 

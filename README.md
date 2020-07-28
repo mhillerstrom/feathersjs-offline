@@ -1,10 +1,10 @@
 # plugin-test
 
-[![Build Status](https://travis-ci.org/mhillerstrom/feathers-plugin-test.png?branch=master)](https://travis-ci.org/mhillerstrom/feathers-plugin-test)
-[![Code Climate](https://codeclimate.com/github/mhillerstrom/feathers-plugin-test/badges/gpa.svg)](https://codeclimate.com/github/mhillerstrom/feathers-plugin-test)
-[![Test Coverage](https://codeclimate.com/github/mhillerstrom/feathers-plugin-test/badges/coverage.svg)](https://codeclimate.com/github/mhillerstrom/feathers-plugin-test/coverage)
-[![Dependency Status](https://img.shields.io/david/mhillerstrom/feathers-plugin-test.svg?style=flat-square)](https://david-dm.org/mhillerstrom/feathers-plugin-test)
-[![Download Status](https://img.shields.io/npm/dm/plugin-test.svg?style=flat-square)](https://www.npmjs.com/package/plugin-test)
+[![Build Status](https://travis-ci.org/mhillerstrom/feathersjs-offline.png?branch=master)](https://travis-ci.org/mhillerstrom/feathersjs-offline)
+[![Code Climate](https://codeclimate.com/github/mhillerstrom/feathersjs-offline/badges/gpa.svg)](https://codeclimate.com/github/mhillerstrom/feathersjs-offline)
+[![Test Coverage](https://codeclimate.com/github/mhillerstrom/feathersjs-offline/badges/coverage.svg)](https://codeclimate.com/github/mhillerstrom/feathersjs-offline/coverage)
+[![Dependency Status](https://img.shields.io/david/mhillerstrom/feathersjs-offline.svg?style=flat-square)](https://david-dm.org/mhillerstrom/feathersjs-offline)
+[![Download Status](https://img.shields.io/npm/dm/feathersjs-offline.svg?style=flat-square)](https://www.npmjs.com/package/feathersjs-offline)
 
 > Plugin test
 
@@ -20,11 +20,11 @@ TBD
 
 ## Complete Example
 
-Here's an example of a Feathers server that uses `plugin-test`. 
+Here's an example of a Feathers client that uses `feathersjs-offline`. 
 
 ```js
 const feathers = require('@feathersjs/feathers');
-const plugin = require('plugin-test');
+const plugin = require('@feathersjs-offline/owndata');
 
 // Initialize the application
 const app = feathers();
