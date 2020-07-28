@@ -1,0 +1,62 @@
+{
+  "name": "feathersjs-offline",
+  "description": "Plugin test",
+  "version": "0.0.0",
+  "homepage": "https://github.com/mhillerstrom/feathersjs-offline",
+  "main": "lib/",
+  "keywords": [
+    "feathers",
+    "feathersjs-offline"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/mhillerstrom/feathersjs-offline.git"
+  },
+  "author": {
+    "name": "Feathers contributors",
+    "email": "hello@feathersjs.com",
+    "url": "https://feathersjs.com"
+  },
+  "contributors": [],
+  "bugs": {
+    "url": "https://github.com/mhillerstrom/feathersjs-offline/issues"
+  },
+  "engines": {
+    "node": ">= 10"
+  },
+  "scripts": {
+    "install": "lerna bootstrap",
+    "publish": "lerna publish && git commit -am \"chore: Update changelog\" && git push origin",
+    "lint": "tslint 'packages/**/*.js' 'packages/**/*.ts' -c tslint.json --fix",
+    "update-dependencies": "ncu -u && lerna exec -- ncu -u",
+    "clean": "find . -name node_modules -exec rm -rf '{}' + && find . -name package-lock.json -exec rm -rf '{}' +",
+    "test": "npm run lint && nyc lerna run test"
+  },
+  "semistandard": {
+    "env": [
+      "mocha"
+    ]
+  },
+  "directories": {
+    "lib": "lib"
+  },
+  "dependencies": {
+    "debug": "^4.1.1",
+    "feathers-errors": "^2.9.2"
+  },
+  "devDependencies": {
+    "@feathersjs/express": "^4.5.6",
+    "@feathersjs/feathers": "^4.5.5",
+    "@feathersjs/socketio-client": "^4.5.7",
+    "chai": "^4.0.0",
+    "feathers-memory": "^4.1.0",
+    "lerna": "^3.22.1",
+    "npm-check-updates": "^7.0.1",
+    "nyc": "^15.1.0",
+    "shx": "^0.3.2",
+    "socket.io-client": "^2.3.0",
+    "tslint": "^6.1.2",
+    "typescript": "^3.9.7"
+  }
+}

@@ -1,0 +1,70 @@
+{
+  "name": "@feathersjs-offline/owndata",
+  "description": "Add offline data access to FeathersJS app.",
+  "version": "0.0.0",
+  "homepage": "https://feathersjs.com",
+  "main": "lib/",
+  "types": "lib/",
+  "keywords": [
+    "feathers",
+    "feathers-plugin"
+  ],
+  "license": "MIT",
+  "funding": {
+    "type": "opencollective",
+    "url": "https://opencollective.com/feathers"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/mhillerstrom/feathersjs-offline/owndata.git"
+  },
+  "author": {
+    "name": "Michael Hillerstroem",
+    "email": "michael@hillerstrom.name",
+    "url": "https://github.com/mhillerstrom"
+  },
+  "contributors": [],
+  "bugs": {
+    "url": "https://github.com/mhillerstrom/feathersjs-offline/issues"
+  },
+  "engines": {
+    "node": ">= 10"
+  },
+  "scripts": {
+    "prepublish": "npm run compile",
+    "compile": "shx rm -rf lib/ && tsc",
+    "test": "npm run compile && npm run mocha",
+    "mocha": "mocha --config ../../.mocharc.ts.json --recursive test/**.test.ts test/**/*.test.ts test/**.test.js test/**/*.test.js"
+  },
+  "directories": {
+    "lib": "lib"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "dependencies": {
+    "debug": "^4.1.1",
+    "@feathersjs/errors": "^4.5.7",
+    "feathers-memory": "^4.1.0",
+    "jsonwebtoken": "^8.5.1",
+    "lodash": "^4.17.19",
+    "long-timeout": "^0.1.1",
+    "uuid": "^8.2.0"
+  },
+  "devDependencies": {
+    "@feathersjs/express": "^4.5.6",
+    "@feathersjs/feathers": "^4.5.5",
+    "@feathersjs/socketio-client": "^4.5.7",
+    "@types/debug": "^4.1.5",
+    "@types/jsonwebtoken": "^8.5.0",
+    "@types/lodash": "^4.14.158",
+    "@types/mocha": "^8.0.0",
+    "@types/node": "^14.0.25",
+    "@types/uuid": "^8.0.0",
+    "feathers-memory": "^4.1.0",
+    "mocha": "^8.0.1",
+    "shx": "^0.3.2",
+    "ts-node": "^8.10.2",
+    "typescript": "^3.9.7"
+  }
+}
