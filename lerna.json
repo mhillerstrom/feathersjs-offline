@@ -9,7 +9,6 @@
       "hoist": true
     },
     "publish": {
-      "allowBranch": "main",
       "message": "chore(release): publish %s",
       "conventionalCommits": true,
       "createRelease": "github"
