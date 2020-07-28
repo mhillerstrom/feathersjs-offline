@@ -1,4 +1,4 @@
-# plugin-test
+# @feathersjs-offline
 
 [![Build Status](https://travis-ci.org/mhillerstrom/feathersjs-offline.png?branch=master)](https://travis-ci.org/mhillerstrom/feathersjs-offline)
 [![Code Climate](https://codeclimate.com/github/mhillerstrom/feathersjs-offline/badges/gpa.svg)](https://codeclimate.com/github/mhillerstrom/feathersjs-offline)
@@ -11,7 +11,7 @@
 ## Installation
 
 ```
-npm install plugin-test --save
+npm install @feathersjs-offline --save
 ```
 
 ## Documentation
@@ -35,6 +35,6 @@ app.configure(plugin());
 
 ## License
 
-Copyright (c) 2018
+Copyright (c) 2020
 
 Licensed under the [MIT license](LICENSE).

@@ -1,4 +1,4 @@
-# feathers-offline-owndata
+# @feathersjs-offline/owndata
 
 [![Build Status](https://travis-ci.org/mhillerstrom/feathersjs-offline-owndata.png?branch=master)](https://travis-ci.org/mhillerstrom/feathersjs-offline-owndata)
 [![Code Climate](https://codeclimate.com/github/mhillerstrom/feathersjs-offline-owndata/badges/gpa.svg)](https://codeclimate.com/github/mhillerstrom/feathersjs-offline-owndata)
@@ -16,7 +16,7 @@ As I'm new at this many details are somewhat of a mystery. I've taken the `feath
    - the `types` directory probably needs a lot of attention
    - This package probably need some extra documentation. Where should I (or someone else) put this? Do you have some input to what's needed?
 
-> I have a sample Quasar-Cordova-FeathersJS-MongoDB [app](https://github.com/mhillerstrom/Quasar-Cordova) showcasing `feathers-offline-owndata`. It's still not complete, but it will show offline ability.
+> I have a sample Quasar-Cordova-FeathersJS-MongoDB [app](https://github.com/mhillerstrom/Quasar-Cordova) showcasing `@feathersjs-offline/owndata`. It's still not complete, but it will show offline ability.
 
 ## Installation
 

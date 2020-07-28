@@ -1,7 +1,6 @@
 "use strict";
 // const errors =('feathers-errors');
 const makeDebug = require('debug');
-// if (!global._babelPolyfill) { require('babel-polyfill'); }
 const debug = makeDebug('myPlugin');
 class Service {
     constructor(app, options = {}) {
