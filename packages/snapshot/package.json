@@ -1,0 +1,48 @@
+{
+  "name": "@feathersjs-offline/snapshot",
+  "version": "0.0.1",
+  "description": "Take snapshot from server using a (possibly) narrowing query",
+  "keywords": [
+    "FeathersJS",
+    "snapshot",
+    "offline",
+    "mobile"
+  ],
+  "author": "Michael Hillerström <michael@hillerstrom.name>",
+  "homepage": "https://github.com/mhillerstrom/feathersjs-offline/tree/master/packages/snapshot#readme",
+  "license": "ISC",
+  "main": "lib/snapshot.js",
+  "directories": {
+    "lib": "lib",
+    "test": "__tests__"
+  },
+  "files": [
+    "lib"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mhillerstrom/feathersjs-offline.git"
+  },
+  "scripts": {
+    "prepublish": "npm run compile",
+    "compile": "shx rm -rf lib/ && tsc",
+    "test": "npm run compile && npm run mocha",
+    "mocha": "mocha --config ../../.mocharc.ts.json --recursive test/**.test.ts test/**/*.test.ts test/**.test.js test/**/*.test.js"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "@feathersjs/feathers": "^4.5.8",
+    "@types/debug": "^4.1.5",
+    "@types/mocha": "^8.0.3",
+    "@types/node": "^14.6.2",
+    "chai": "^4.2.0",
+    "feathers-memory": "^4.1.0",
+    "mocha": "^8.1.3",
+    "shx": "^0.3.2",
+    "ts-node": "^9.0.0",
+    "typescript": "^4.0.2"
+  },
+  "bugs": {
+    "url": "https://github.com/mhillerstrom/feathersjs-offline/issues"
+  }
+}

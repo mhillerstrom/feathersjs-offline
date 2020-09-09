@@ -1,0 +1,45 @@
+{
+  "name": "@feathersjs-offline/server",
+  "version": "0.0.1",
+  "description": "Wrapper for services under offline control",
+  "keywords": [
+    "Feathersjs",
+    "offline",
+    "mobile"
+  ],
+  "author": "Michael Hillerström <michael@hillerstrom.name>",
+  "homepage": "https://github.com/mhillerstrom/feathersjs-offline/tree/master/packages/server#readme",
+  "license": "ISC",
+  "main": "lib/server.js",
+  "directories": {
+    "lib": "lib",
+    "test": "__tests__"
+  },
+  "files": [
+    "lib"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mhillerstrom/feathersjs-offline.git"
+  },
+  "scripts": {
+    "prepublish": "npm run compile",
+    "compile": "shx rm -rf lib/ && tsc",
+    "test": "npm run compile && npm run mocha",
+    "mocha": "mocha --config ../../.mocharc.ts.json --recursive test/**.test.ts test/**/*.test.ts test/**.test.js test/**/*.test.js"
+  },
+  "bugs": {
+    "url": "https://github.com/mhillerstrom/feathersjs-offline/issues"
+  },
+  "dependencies": {
+  },
+  "devDependencies": {
+    "@types/debug": "^4.1.5",
+    "@types/mocha": "^8.0.3",
+    "@types/node": "^14.6.2",
+    "mocha": "^8.1.3",
+    "shx": "^0.3.2",
+    "ts-node": "^9.0.0",
+    "typescript": "^4.0.2"
+  }
+}

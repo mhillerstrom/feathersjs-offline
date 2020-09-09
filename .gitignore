@@ -30,3 +30,6 @@ node_modules
 .lock-wscript
 
 dist/
+packages/**/lib/*
+ls.data/*
+scratch/*
