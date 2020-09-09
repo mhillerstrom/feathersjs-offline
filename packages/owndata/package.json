@@ -1,7 +1,11 @@
 {
   "name": "@feathersjs-offline/owndata",
   "description": "Add offline data access to FeathersJS app.",
+<<<<<<< HEAD
   "version": "0.0.1",
+=======
+  "version": "0.1.1",
+>>>>>>> db38716c35c6692d41bf500c2955070d9ede86ce
   "homepage": "https://feathersjs.com",
   "main": "lib/",
   "types": "lib/",

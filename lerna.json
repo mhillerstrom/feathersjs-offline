@@ -3,7 +3,11 @@
   "packages": [
     "packages/*"
   ],
+<<<<<<< HEAD
   "version": "0.0.1",
+=======
+  "version": "0.1.1",
+>>>>>>> db38716c35c6692d41bf500c2955070d9ede86ce
   "command": {
     "bootstrap": {
       "hoist": true
