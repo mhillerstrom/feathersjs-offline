@@ -11,10 +11,10 @@
   "author": "Michael Hillerström <michael@hillerstrom.name>",
   "homepage": "https://github.com/mhillerstrom/feathersjs-offline/tree/master/packages/snapshot#readme",
   "license": "ISC",
-  "main": "lib/snapshot.js",
+  "main": "lib/index.js",
   "directories": {
     "lib": "lib",
-    "test": "__tests__"
+    "test": "test"
   },
   "files": [
     "lib"
@@ -29,7 +29,10 @@
     "test": "npm run compile && npm run mocha",
     "mocha": "mocha --config ../../.mocharc.ts.json --recursive test/**.test.ts test/**/*.test.ts test/**.test.js test/**/*.test.js"
   },
-  "dependencies": {},
+  "dependencies": {
+    "debug": "^4.1.1",
+    "node-localstorage": "^2.1.6"
+  },
   "devDependencies": {
     "@feathersjs/feathers": "^4.5.8",
     "@types/debug": "^4.1.5",

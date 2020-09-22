@@ -4,7 +4,7 @@
 import makeDebug from 'debug';
 const debug = makeDebug('@feathersjs-offline/snapshot');
 
-export default function snapshot (service, baseQuery) {
+function snapshot (service, baseQuery) {
   debug(`start: ${JSON.stringify(baseQuery)}`);
 
   const query = Object.assign({}, { $skip: 0, $limit: 200 }, baseQuery); // use max recs configured
@@ -13,6 +13,7 @@ export default function snapshot (service, baseQuery) {
   return service.find({ query })
     .then(result => {
       debug(`read ${(result.data || result).length} records`);
+      debug(`  read ${JSON.stringify(result.data || result)}`);
 
       if (!result.data) {
         return result;
@@ -37,3 +38,5 @@ export default function snapshot (service, baseQuery) {
       });
   }
 }
+
+module.exports = snapshot;

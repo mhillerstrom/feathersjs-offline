@@ -11,10 +11,10 @@
   "author": "Michael Hillerström <michael@hillerstrom.name>",
   "homepage": "https://github.com/mhillerstrom/feathersjs-offline/tree/master/packages/optimistic-mutation#readme",
   "license": "ISC",
-  "main": "lib/optimistic-mutation.js",
+  "main": "src/optimistic-mutation.js",
   "directories": {
     "lib": "lib",
-    "test": "__tests__"
+    "test": "test"
   },
   "files": [
     "lib"
@@ -44,5 +44,4 @@
     "ts-node": "^9.0.0",
     "typescript": "^4.0.2"
   }
-
 }

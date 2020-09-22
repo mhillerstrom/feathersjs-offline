@@ -5,6 +5,7 @@
 [![Test Coverage](https://codeclimate.com/github/mhillerstrom/feathersjs-offline/badges/coverage.svg)](https://codeclimate.com/github/mhillerstrom/feathersjs-offline/coverage)
 [![Dependency Status](https://img.shields.io/david/mhillerstrom/feathersjs-offline.svg?style=flat-square)](https://david-dm.org/mhillerstrom/feathersjs-offline)
 [![Download Status](https://img.shields.io/npm/dm/feathersjs-offline.svg?style=flat-square)](https://www.npmjs.com/package/feathersjs-offline)
+[![lerna](https://img.shields.io/badge/maintained%20with-lerna-cc00ff.svg)](https://lerna.js.org/)
 
 > Plugin test
 

@@ -5,7 +5,7 @@ const assert = require('chai').assert;
 const feathers = require('@feathersjs/feathers');
 const memory = require('feathers-memory');
 
-const snapshot = require('../src').default;
+const snapshot = require('../src');
 
 const sampleLen = 25;
 let data;

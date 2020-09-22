@@ -5,6 +5,7 @@
 [![Test Coverage](https://codeclimate.com/github/mhillerstrom/feathersjs-offline-ownnet/badges/coverage.svg)](https://codeclimate.com/github/mhillerstrom/feathersjs-offline-ownnet/coverage)
 [![Dependency Status](https://img.shields.io/david/mhillerstrom/feathersjs-offline-ownnet.svg?style=flat-square)](https://david-dm.org/mhillerstrom/feathersjs-offline-ownnet)
 [![Download Status](https://img.shields.io/npm/dm/feathersjs-offline-ownnet.svg?style=flat-square)](https://www.npmjs.com/package/feathersjs-offline-ownnet)
+[![lerna](https://img.shields.io/badge/maintained%20with-lerna-cc00ff.svg)](https://lerna.js.org/)
 
 > Offline-first own-net replication with optimistic updates.
 

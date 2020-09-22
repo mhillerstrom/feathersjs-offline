@@ -3,7 +3,7 @@
   "description": "Common utilities for offline data access to FeathersJS app.",
   "version": "0.0.1",
   "homepage": "https://feathersjs.com",
-  "main": "lib/",
+  "main": "src/index.js",
   "types": "lib/",
   "keywords": [
     "feathers",

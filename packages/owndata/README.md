@@ -15,7 +15,7 @@
 ## Installation
 
 ```
-npm install feathers-offline-owndata --save
+npm install @feathersjs-offline/owndata --save
 ```
 
 

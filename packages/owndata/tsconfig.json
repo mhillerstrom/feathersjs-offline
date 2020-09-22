@@ -2,7 +2,7 @@
   "extends": "../../tsconfig",
   "exclude": [
     "./localStorage.js",
-    "./app*.js"
+    "./app*.js", "src/owndata-wrapper.js.old"
   ],
   "include": [
     "src/*.ts",
