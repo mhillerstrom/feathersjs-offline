@@ -2,7 +2,6 @@ const { expect } = require('chai');
 const feathers = require('@feathersjs/feathers');
 const errors =  require('@feathersjs/errors');
 const adapterTests = require('@feathersjs/adapter-tests');
-const { setNow } = require('feathers-hooks-common');
 const memory = require('feathers-memory');
 const RealtimeServiceWrapper = require('../lib/server');
 
@@ -30,12 +29,15 @@ const testSuite = adapterTests([
   '.update + $select',
   '.update + id + query',
   '.update + NotFound',
+  '.update + query + NotFound',
   '.update + id + query id',
   '.patch',
   '.patch + $select',
   '.patch + id + query',
   '.patch multiple',
-  '.patch multi query',
+  '.patch multi query same',
+  '.patch multi query changed',
+  '.patch + query + NotFound',
   '.patch + NotFound',
   '.patch + id + query id',
   '.create',
@@ -83,9 +85,9 @@ describe('RealtimeServerWrapper - adapterTest', () => {
 
   const RealtimeService = RealtimeServiceWrapper(memory);
 
-  app.use('people', new RealtimeService({ events, adapterTest: true}, app));
+  app.use('people', RealtimeService({ events, adapterTest: true}, app));
   testSuite(app, errors, 'people');
 
-  app.use('/people-customid', new RealtimeService({ id: 'customid', events, adapterTest: true}, app));
+  app.use('/people-customid', RealtimeService({ id: 'customid', events, adapterTest: true}, app));
   testSuite(app, errors, 'people-customid', 'customid');
 });

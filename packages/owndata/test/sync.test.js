@@ -2,57 +2,90 @@
 const { expect } = require('chai');
 const feathers = require('@feathersjs/feathers');
 const errors = require('@feathersjs/errors');
-const io = require('socket.io-client');
-const socket = io('http://localhost:8888');
-const socketio = require('@feathersjs/socketio-client');
+const socketio = require('@feathersjs/socketio');
 const memory = require('feathers-memory');
-const server = require('./server');
-const OwndataWrapper = require('../src');
+const io = require('socket.io-client');
+const socketioClient = require('@feathersjs/socketio-client');
+const RealtimeServiceWrapper = require('@feathersjs-offline/server');
+const { Owndata, owndataWrapper } = require('../src');
 
+const RealtimeService = RealtimeServiceWrapper(memory);
+const port = 8888;
+const url = `http://localhost:${port}`;
+const socket = io(url);
 
 let verbose = false;
 let app;
 let service;
 let ix = 0;
 
-function newServicePath() {
+function newServicePath () {
   return '/tmp' /* + ix++ */;
 }
 
-function services1(path) {
+function services1 (path) {
   fromServiceNonPaginatedConfig(path);
 }
 
-function services2(path) {
+function services2 (path) {
   app.configure(OwndataWrapper(path, memory, { multi: true }));
   return app.service(path);
 }
 
-function fromServiceNonPaginatedConfig(path) {
+function fromServiceNonPaginatedConfig (path) {
   app.configure(OwndataWrapper(path, memory, { multi: true }));
   return app.service(path);
 }
 
+const logAction = (type, action) => {
+  return (msg, _ctx) => {
+    console.log(`${type}: action=${action}, msg=${JSON.stringify(msg)}, _ctx.params=${JSON.stringify(_ctx.params)}, _ctx.query=${JSON.stringify(_ctx.query)}`);
+  }
+}
 
 describe('Owndata-test - sync', () => {
   let remote;
+  let rApp;
   let clientSyncResult = [];
   let remoteSyncResult = [];
 
   beforeEach(async () => {
     let path = '/tmp';
-    let rApp = server(path);
-    rApp.listen(8888);
+
+    // Define server
+    rApp = feathers()
+    .configure(socketio())
+    .use(path, new RealtimeService({multi: true}));
+    setUpHooks(rApp, 'SERVER', path, true);
     remote = rApp.service(path);
-    await remote.create([ { id: 98, order: 98 }, { id: 100, order: 100 } ]);
 
+    // ['created', 'updated', 'patched', 'removed'].forEach(a => remote.on(a, logAction('SERVER', a)));
+
+    // Start server
+    const server = rApp.listen(port);
+
+    // Let's wait for server is ready to serve...
+    let ready = false;
+    server.on('listening', async () => {
+      // Fill some known data into server
+      await remote.create([ { id: 98, order: 98 }, { id: 100, order: 100 } ]);
+
+      ready = true;
+    });
+
+    while (!ready) {
+      await delay(10)(true);
+    }
+
+    // Define client
     app = feathers();
-    app.configure(socketio(socket));
-    app.configure(OwndataWrapper(path, memory, { clearStorage: true }));
+    app.configure(socketioClient(socket));
+    app.use(path, Owndata({ clearStorage: true }));
     service = app.service(path);
-    setUpHooks('CLIENT', path, true);
+    // ['created', 'updated', 'patched', 'removed'].forEach(a => service.on(a, logAction('CLIENT', a)));
+    // ['created', 'updated', 'patched', 'removed'].forEach(a => service.localService.on(a, logAction('LOCAL', a)));
+    // ['created', 'updated', 'patched', 'removed'].forEach(a => service.localQueue.on(a, logAction('QUEUE', a)));
   });
-
 
   it('sync works', () => {
     return service.create({ id: 99, order: 99 }, { query: { _fail: true } })
@@ -66,10 +99,14 @@ describe('Owndata-test - sync', () => {
       .then(res => {
         expect(res.length).to.equal(1, '1 row created locally');
       })
-      .then(() => {
+      .then(() => remote.find())
+      .then(res => {
+        expect(res.length).to.equal(2, '2 rows on remote');
+      })
+      .then(async () => {
         let flag = null;
         try {
-          service.sync();
+          await service.sync();
           flag = true;
         } catch (err) {
           flag = false;
@@ -84,8 +121,6 @@ describe('Owndata-test - sync', () => {
       .then(delay())
       .then(data => {
         clientSyncResult = data;
-        console.log(`Second test: serverData = ${JSON.stringify(remoteSyncResult)}`);
-        console.log(`Second test: clientData = ${JSON.stringify(clientSyncResult)}`);
         expect(remoteSyncResult.length).to.equal(clientSyncResult.length, 'Same number of documents');
         for (let i = 0; i < remoteSyncResult.length; i++) {
           expect(clientSyncResult[i].id).to.equal(remoteSyncResult[i].id, 'id was updated (i=${i})');
@@ -98,7 +133,7 @@ describe('Owndata-test - sync', () => {
 
 // Helpers
 
-function delay(ms = 0) {
+function delay (ms = 0) {
   return data => new Promise(resolve => {
     setTimeout(() => {
       resolve(data);
@@ -112,12 +147,13 @@ function delay(ms = 0) {
  * ```{query: {_fail:true}}``` to the call options.
  * If `_fail` is false or the query is not supplied all this hook is bypassed.
  *
+ * @param {object} app The application handle
  * @param {string} type Typically 'Remote' or 'Client'
  * @param {string} service The service to be hooked into
  * @param {boolean} allowFail Will we allow the usage of _fail and _timeout? (Default false)
  */
-function setUpHooks(type, service, allowFail = false) {
-  console.log(`setUpHooks called: type=${type}, service=${service}, allowFail=${allowFail}`)
+function setUpHooks (app, type, service, allowFail = false) {
+  if (verbose) console.log(`setUpHooks called: type=${type}, service=${service}, allowFail=${allowFail}`)
   app.service(service).hooks({
     before: {
       all: async context => {
@@ -128,7 +164,7 @@ function setUpHooks(type, service, allowFail = false) {
         }
         if (allowFail && context.params.query) {
           if (context.params.query._fail) { // Passing in param _fail simulates errors
-            throw new errors.BadRequest('Fail requested by user request - simulated timout/missing connection');
+            throw new errors.Timeout('Fail requested by user request - simulated timeout/missing connection');
           }
           else {
             // _fail was supplied but not true - remove it before continuing
@@ -136,7 +172,7 @@ function setUpHooks(type, service, allowFail = false) {
             return context;
           }
         }
-      },
+      }
 
     },
     error: {

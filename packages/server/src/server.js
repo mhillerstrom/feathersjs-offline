@@ -4,24 +4,26 @@ const debug = require('debug')('@feathersjs-offline:server:index');
 const defOptions = {
   useShortUuid: true,
   adapterTest: false
-}
+};
 
 /**
- * A RealtimeServiceWrapper is a SERVER adapter wrapping a standard service class to ensure all records/documents
+ * A RealtimeServiceWrapper is a SERVER adapter wrapping a standard AdapterService to ensure all records/documents
  * contains 'onServerAt' and to provide a getSyncInfo() function to support proper sync'ing of clients.
  */
-module.exports = function RealtimeServiceWrapper (cls) {
+function RealtimeServiceWrapper (cls = 'EMPTY AS HELL!!!!') {
+  console.log(`Executing RealtimeServiceWrapper, cls = ${cls.toString()}`);
   if (!cls) {
-    throw new Error(`Bad usage: class for service on path '${path} must be supplied to RealtimeServiceWrapper.`);
+    throw new Error(`Bad usage: AdapterService must be supplied to RealtimeServiceWrapper.`);
   }
-  if (cls && cls.Service && cls.Service.prototype.isPrototypeOf('AdapterService')) {
-    throw new Error(`Bad service: Cannot wrap the service supplied for path '${path}`);
-  }
-  return class extends cls.Service {
+  // if (cls && cls.Service && !cls.Service.prototype.isPrototypeOf('AdapterService')) {
+  //   throw new Error(`Bad service: Cannot wrap the service supplied for path '${path}`);
+  // }
+  console.log(`Creating RealtimeService`);
+  class Service extends cls.Service {
     constructor (options = {}, app) {
       let opts = Object.assign({}, defOptions, options);
       debug(`RealtimeService constructor started, options=${JSON.stringify(opts)}`);
-      super(opts);
+      super(opts, app);
 
       if (this.options.adapterTest) {
         debug('  Setting up for adapter tests...');
@@ -36,14 +38,15 @@ module.exports = function RealtimeServiceWrapper (cls) {
     }
 
     async _get (id, params) {
+      debug(`Calling _get(${id}, ${JSON.stringify(params)})`);
       return super._get(id, params)
-        .then(this._strip);
+      .then(this._strip);
     }
 
     async _find (query, params) {
+      debug(`Calling _find(${JSON.stringify(query)}, ${JSON.stringify(params)})`);
       return super._find(query, params)
-        .then(this._strip);
-
+      .then(this._strip);
     }
 
     async _create (data, params = {}, ts = 0) {
@@ -69,7 +72,7 @@ module.exports = function RealtimeServiceWrapper (cls) {
       newData.onServerAt = ts;
 
       return super._create(newData, params)
-        .then(this._strip);
+      .then(this._strip);
     }
 
     async _update (id, data, params = {}) {
@@ -78,7 +81,6 @@ module.exports = function RealtimeServiceWrapper (cls) {
       newData.onServerAt = new Date();
       return super._update(id, newData, params)
       .then(this._strip);
-
     }
 
     async _patch (id, data, params = {}) {
@@ -86,39 +88,27 @@ module.exports = function RealtimeServiceWrapper (cls) {
       let newData = shallowClone(data);
       newData.onServerAt = new Date();
       return super._patch(id, newData, params)
-        .then(this._strip);
-
+      .then(this._strip);
     }
 
     async _remove (id, params = {}) {
       debug(`Calling _remove(${id}, ${JSON.stringify(params)})`);
+      // TODO: maybe softDelete instead...
       return super._remove(id, params)
-        .then(this._strip);
-
-    }
-
-    //
-    // And now the Wrapper specific methods
-    //
-
-    /**
-     * Sync will ensure that all missing documents/rows on client will be sent to client.
-     * The client, in turn, will send all queued updates to the server
-     * @param {object} options
-     */
-    async sync (options = {query: {}}) {
-      let min = options.query.syncMin || 0;
-      let max = options.query.syncMax || 0;
-      delete options.query.syncMin;
-      delete options.query.syncMax;
-
-      let query = { $or: [ {onServerAt: {$lt: new Date(min).getTime()}}, {onServerAt: {$gt: new Date(max).getTime()}}]};
-      query = Object.assign({}, options.query, query);
-
-      return this.find({ query });
+      .then(this._strip);
     }
   };
+
+  let init = (options, app) => {
+    return new Service(options, app);
+  }
+  init.Service = Service;
+
+  return init;
 }
+
+
+module.exports = RealtimeServiceWrapper;
 
 // --- Helper functions
 
@@ -129,9 +119,7 @@ module.exports = function RealtimeServiceWrapper (cls) {
  */
 function shallowClone (obj) {
   return Object.assign({}, obj);
-}
-
-
+};
 
 const _internalAlwaysSelect = ['uuid', 'updatedAt', 'onServerAt'];
 const _adapterTestStrip = ['uuid', 'updatedAt', 'onServerAt'];
@@ -153,5 +141,4 @@ const attrStrip = (...attr) => {
     }
     return result;
   }
-}
-
+};

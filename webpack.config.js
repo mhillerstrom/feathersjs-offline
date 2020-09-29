@@ -4,7 +4,7 @@ const { merge } = require('webpack-merge');
 const UglifyJSPlugin = require('uglifyjs-webpack-plugin');
 
 function createConfig (name, isProduction = false) {
-  const output = name === 'index' ? 'feathersjs-offline' : 'feathers-offline-' + name;
+  const output = name === 'index' ? 'feathersjs-offline' : 'feathersjs-offline-' + name;
   const entry = name === 'server' ? 'server' : 'index';
   const commons = {
     entry: `./packages/${name}/lib/${entry}.js`,
@@ -16,8 +16,8 @@ function createConfig (name, isProduction = false) {
       fs: 'empty'
     },
     output: {
-      library: 'feathersjs-offline',
-      libraryTarget: 'umd',
+      library: `feathersjsOffline${name.substr(0,1).toUpperCase()}${name.substr(1)}`,
+      libraryTarget: 'var', // 'umd',
       globalObject: 'this',
       path: path.resolve(__dirname, 'dist'),
       filename: `${output}.js`
@@ -69,8 +69,8 @@ module.exports = [
   // createConfig('optimistic-mutation', true),
   createConfig('owndata'),
   createConfig('owndata', true),
-  // createConfig('ownnet'),
-  // createConfig('ownnet', true),
+  createConfig('ownnet'),
+  createConfig('ownnet', true),
   createConfig('server'),
   createConfig('server', true),
   createConfig('snapshot'),

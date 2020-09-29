@@ -2,8 +2,7 @@ const assert = require('chai').assert;
 const feathers = require('@feathersjs/feathers');
 const memory = require('feathers-memory');
 const errors = require('@feathersjs/errors');
-// const OwndataWrapper = require('@feathersjs-offline/owndata');
-const OwndataWrapper = require('../src');
+const { owndataWrapper } = require('../src');
 const _ = require('lodash');
 const { omit, remove } = _;
 
@@ -47,7 +46,7 @@ function setUpHooks (type, service, allowFail = false) {
         }
         if (allowFail && context.params.query) {
           if (context.params.query._fail) { // Passing in param _fail simulates errors
-            throw new errors.BadRequest('Fail requested by user request - simulated timout/missing connection');
+            throw new errors.Timeout('Fail requested by user request - simulated timeout/missing connection');
           }
           else {
             // _fail was supplied but not true - remove it before continuing

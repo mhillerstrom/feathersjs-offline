@@ -14,9 +14,98 @@
 
 ## Installation
 
+```bash
+$ npm install @feathersjs-offline/ownnet --save
 ```
-npm install feathers-offline-ownnet --save
+## API
+
+```js
+Ownnet([options])
 ```
+Returns a new service instance initialized with the given options.
+
+```js
+import { Ownnet } from '@feathersjs-offline/ownnet');
+
+app.use('/messages', Ownnet());
+app.use('/messages', Ownnet({ id, events, paginate }));
+````
+
+or
+
+```js
+ownnetWrapper(app, path, [options])
+```
+Returns a new wrapped service instance initialized with the given options.
+
+```js
+import memory from 'feathers-memory');
+import { ownnetWrapper } from '@feathersjs-offline/ownnet');
+
+app.use('/messages', memory());
+ownnetWrapper(app, 'messages');
+
+
+app.use('/messages', memory());
+ownnetWrapper(app, 'messages', { id, events, paginate }));
+
+// No prior app.use('snippets', ...); .... is also allowed
+ownnetWrapper(app, 'snippets');
+````
+
+### Options:
+All options available for the wrapped adapter can be used in addition to:
+
+- `id` (optional, default: 'id') - The name of the id field property.
+- `events` (optional) - A list of custom service events sent by this service.
+- `paginate` (optional) - A pagination object containing a default and max page size.
+- `whitelist` (optional) - A list of additional query parameters to allow.
+- `multi` (optional) - Allow create with arrays and update and remove with id null to change multiple items. Can be true for all methods or an array of allowed methods (e.g. [ 'remove', 'create' ]).
+- `useShortUuid` (optional, default `true`) - Generate short `uuid`s. If `false` long `uuid`s are generated. This option should match whatever you choose on the client.
+- `adapterTest` (optional, default `false`) - This is usually only used for running adapter tests as it suppresses the generation of `uuid`, and updating of `onServerAt`.
+
+### Example
+Here is an example of a FeathersJS client with a messages own-net service that supports pagination:
+
+```bash
+$ npm install @feathersjs/feathers @feathersjs/express @feathersjs/socketio @feathersjs/errors feathers-memory @feathersjs-offline/ownnet
+```
+
+In app.js:
+
+```js
+const feathers = require('@feathersjs/feathers');
+const io = require('socket.io-client');
+const port = 3030;
+const socket = io(`http://localhost:${port}`);
+const socketio = require('@feathersjs/socketio-client');
+const io = require('@feathersjs/socketio');
+const { Ownnet } = require('@feathersjs-offline/ownnet');
+
+// Create an Express compatible Feathers application instance.
+const app = feathers();
+
+// Configure socketio 
+app.configure(socketio(socket));
+
+// Create an own-net FeathersJS service with a default page size of 2 items
+// and a maximum size of 4
+app.use('/messages', Ownnet({
+  paginate: {
+    default: 2,
+    max: 4
+  }
+}));
+
+// Create a silly Message
+app.service('messages').create({
+  text: 'Message created on client'
+}).then(message => console.log('Created message', message));
+```
+
+Run the example together with the example in `@feathersjs-offline/server` and you should see two messages displayed - one from this client and one from the server.
+
+For at more useful example see `@feathersjs-offline/example`.
 
 
 ## Documentation

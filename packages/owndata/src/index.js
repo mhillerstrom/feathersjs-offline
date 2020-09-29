@@ -1,3 +1,3 @@
-const OwndataWrapper = require('./owndata-wrapper');
+const { init, Owndata, owndataWrapper } = require('./owndata-wrapper');
 
-module.exports = OwndataWrapper;
+module.exports = { init, Owndata, owndataWrapper };

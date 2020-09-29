@@ -3,7 +3,7 @@ const feathers = require('@feathersjs/feathers');
 const errors =  require('@feathersjs/errors');
 const adapterTests = require('@feathersjs/adapter-tests');
 const memory = require('feathers-memory');
-const OwndataWrapper = require('../lib');
+const { owndataWrapper } = require('../lib');
 
 const testSuite = adapterTests([
   '.options',
@@ -80,10 +80,11 @@ describe('OwndataWrapper - adapterTest', () => {
   app = feathers();
   const events = ['testing'];
 
-  // app.use('people', memory({ events, adapterTest: true, clearStorage: true }));
-  app.configure(OwndataWrapper('people', memory, { events, adapterTest: true, clearStorage: true }));
+  app.use('people', memory({ events }));
+  owndataWrapper(app, 'people', {adapterTest: true, clearStorage: true});
   testSuite(app, errors, 'people');
 
-  app.configure(OwndataWrapper('people-customid', memory, { events, id: 'customid', adapterTest: true, clearStorage: true }));
+  app.use('people-customid', memory({ events, id: 'customid' }));
+  owndataWrapper(app, 'people-customid', {adapterTest: true, clearStorage: true});
   testSuite(app, errors, 'people-customid', 'customid');
 });

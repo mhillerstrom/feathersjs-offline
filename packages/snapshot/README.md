@@ -13,7 +13,6 @@
 ```
 const snapshot = require('@feathersjs-offline/snapshot');
 
-// TODO: DEMONSTRATE API
 ```
 
 

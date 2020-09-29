@@ -51,19 +51,27 @@ app = feathers();
 
 const events = ['testing'];
 
-app.use('/allpeople',memory({ events }));
+app.use('/allpeople', memory({ events }));
 const apService = app.service('allpeople');
 
-app.configure(OwndataWrapper('/people', memory, { events }));
+app.use('/people', memory({ events /* , paginate: {default: 1, max: 2} */ }));
+owndataWrapper(app, 'people', {multi: true, clearStorage: true});
 const pService = app.service('people');
 
-app.service('people').create({name:'xyz', type: 'test'})
-  .then(res => console.log(`found res=${JSON.stringify(res)}`))
-  .catch(err => console.error(`Got error: name = ${err.name}, message = ${err.message}`))
+app.service('people').create([{name: 'abc', type: 'demo'}, {name: 'def', type: 'production'}, {name:'xyz', type: 'test'}])
+  .then(res => console.log(`created1 res=${JSON.stringify(res)}`))
+  .catch(err => console.error(`Got error1: name = ${err.name}, message = ${err.message}`))
+  .then(() => app.service('people').options.paginate = {
+    default: 1,
+    max: 2
+  })
+  .then(() => {
+    app.service('people').find({
+      query: { $sort: { name: -1 } }
+    })
+    .then(res => console.log(`found2 res=${JSON.stringify(res)}`))
+    .catch(err => console.error(`Got error2: name = ${err.name}, message = ${err.message}`))
+  });
 
-app.service('people').myspec('Hello Michael')
-  .then(res => console.log(`found res=${JSON.stringify(res)}`))
-  .catch(err => console.error(`Got error: name = ${err.name}, message = ${err.message}`))
-
-  console.log(`apService path = ${getServicePath(app, apService)}`);
+    console.log(`apService path = ${getServicePath(app, apService)}`);
   console.log(`pService  path = ${getServicePath(app,  pService)}`);

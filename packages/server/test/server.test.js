@@ -2,8 +2,8 @@
 const { expect } = require('chai');
 const feathers = require('@feathersjs/feathers');
 const errors = require('@feathersjs/errors');
+const RealtimeServiceWrapper = require('../src/server');
 const memory = require('feathers-memory');
-const RealtimeServiceWrapper = require('../lib/server');
 
 let app;
 let service;
@@ -14,7 +14,7 @@ describe('RealtimeServerWrapper', () => {
   const RealtimeService = RealtimeServiceWrapper(memory);
 
   beforeEach(() => {
-    app.use('people', new RealtimeService({ multi: true }, app));
+    app.use('people', RealtimeService({ multi: true }, app));
     service = app.service('people');
   });
 

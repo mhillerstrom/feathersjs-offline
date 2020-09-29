@@ -61,7 +61,7 @@ class MutateStore {
       return index > -1 ? broadcast('left-pub') : undefined;
     }
 
-    remoteRecord.updatedAt = new Date();
+//    remoteRecord.updatedAt = new Date();
     records[records.length] = remoteRecord;
 
     if (this._sorter) {
