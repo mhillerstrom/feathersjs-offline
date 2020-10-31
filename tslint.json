@@ -11,6 +11,7 @@
       "packages/ownnet/lib/**",
       "packages/server/lib/**",
       "packages/snapshot/lib/**",
+      "packages/example/lib/**",
       "**/node_modules/**",
       "**/coverage/**",
       "**/dist/**",

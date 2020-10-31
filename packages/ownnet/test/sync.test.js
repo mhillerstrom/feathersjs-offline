@@ -6,8 +6,8 @@ const socketio = require('@feathersjs/socketio');
 const memory = require('feathers-memory');
 const io = require('socket.io-client');
 const socketioClient = require('@feathersjs/socketio-client');
-const RealtimeServiceWrapper = require('../../server/lib/server'); // require('@feathersjs-offline/server');
-const { Ownnet, ownnetWrapper } = require('../lib');
+const RealtimeServiceWrapper = require('@feathersjs-offline/server');
+const { Ownnet, ownnetWrapper } = require('../src');
 
 const RealtimeService = RealtimeServiceWrapper(memory);
 const port = 8888;
@@ -55,7 +55,7 @@ describe('Ownnet-test - sync', () => {
     // Define server
     rApp = feathers()
     .configure(socketio())
-    .use(path, new RealtimeService({multi: true}));
+    .use(path, RealtimeService({multi: true}));
     setUpHooks(rApp, 'SERVER', path, true);
     remote = rApp.service(path);
 
@@ -105,12 +105,14 @@ describe('Ownnet-test - sync', () => {
       })
       .then(async () => {
         let flag = null;
-        await service.sync()
-          .then(() => {flag = true})
-          .catch(() => {flag = false})
+        try {
+          await service.sync();
+          flag = true;
+        } catch (err) {
+          flag = false;
+        }
         expect(true).to.equal(flag, '.sync() is a method');
       })
-      // .then(delay(50))
       .then(delay())
       .then(() => remote.find({ query: { $sort: {id: 1} } }))
       .then(delay())
@@ -121,9 +123,9 @@ describe('Ownnet-test - sync', () => {
         clientSyncResult = data;
         expect(remoteSyncResult.length).to.equal(clientSyncResult.length, 'Same number of documents');
         for (let i = 0; i < remoteSyncResult.length; i++) {
-          expect(clientSyncResult[i].id).to.equal(remoteSyncResult[i].id, `id was updated (i=${i})`);
-          expect(clientSyncResult[i].order).to.equal(remoteSyncResult[i].order, `order was updated (i=${i})`);
-          expect(clientSyncResult[i].onServerAt).to.equal(remoteSyncResult[i].onServerAt, `onServerAt was updated (i=${i})`);
+          expect(clientSyncResult[i].id).to.equal(remoteSyncResult[i].id, 'id was updated (i=${i})');
+          expect(clientSyncResult[i].order).to.equal(remoteSyncResult[i].order, 'order was updated (i=${i})');
+          expect(clientSyncResult[i].onServerAt).to.equal(remoteSyncResult[i].onServerAt, 'onServerAt was updated (i=${i})');
         }
       })
   });

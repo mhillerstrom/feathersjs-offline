@@ -40,17 +40,28 @@ describe('Owndata-test - client', () => {
   const events = ['testing'];
 });
 
-describe('Owndata-test - client & server', () => {
-
-  beforeEach(() => {
+describe('Owndata-test - Wrapper specific functionality', () => {
+  it('fails with missing prior registration', () => {
+    app = feathers();
+    let path = newServicePath();
+    try {
+      owndataWrapper(app,path,{someDummyOption: 1});
+    } catch (err) {
+      expect(err.name).to.equal('Unavailable', 'No prior service registered on path');
+    }
   });
 
-  // Let's perform all the usual adapter tests to verify full functionality
-  app = feathers();
-  const events = ['testing'];
-});
+  it('fails with missing app', () => {
+    app = feathers();
+    let path = newServicePath();
+    app.service(path);
+    try {
+      owndataWrapper(path,{someDummyOption: 1});
+    } catch (err) {
+      expect(err.name).to.equal('Unavailable', 'Missing app parameter throws Unavailable');
+    }
+  });
 
-describe('Owndata-test - Wrapper specific functionality', () => {
   it('basic functionality', () => {
     app = feathers();
     expect(typeof owndataWrapper).to.equal('function', 'is a function');

@@ -4,10 +4,7 @@ module.exports = {
     all: [],
     find: [],
     get: [],
-    create: [context => {
-      console.log(`data = ${JSON.stringify(context.data)}`);
-      return context;
-    }],
+    create: [],
     update: [],
     patch: [],
     remove: []
@@ -17,7 +14,10 @@ module.exports = {
     all: [],
     find: [],
     get: [],
-    create: [],
+    create: [context => {
+      console.log(`after create data = ${JSON.stringify(context.result)}`);
+      return context;
+    }],
     update: [],
     patch: [],
     remove: []

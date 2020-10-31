@@ -19,23 +19,6 @@ let app;
 let service;
 let ix = 0;
 
-function newServicePath () {
-  return '/tmp' /* + ix++ */;
-}
-
-function services1 (path) {
-  fromServiceNonPaginatedConfig(path);
-}
-
-function services2 (path) {
-  app.configure(OwndataWrapper(path, memory, { multi: true }));
-  return app.service(path);
-}
-
-function fromServiceNonPaginatedConfig (path) {
-  app.configure(OwndataWrapper(path, memory, { multi: true }));
-  return app.service(path);
-}
 
 const logAction = (type, action) => {
   return (msg, _ctx) => {
@@ -55,7 +38,7 @@ describe('Owndata-test - sync', () => {
     // Define server
     rApp = feathers()
     .configure(socketio())
-    .use(path, new RealtimeService({multi: true}));
+    .use(path, RealtimeService({multi: true}));
     setUpHooks(rApp, 'SERVER', path, true);
     remote = rApp.service(path);
 
@@ -83,8 +66,8 @@ describe('Owndata-test - sync', () => {
     app.use(path, Owndata({ clearStorage: true }));
     service = app.service(path);
     // ['created', 'updated', 'patched', 'removed'].forEach(a => service.on(a, logAction('CLIENT', a)));
-    // ['created', 'updated', 'patched', 'removed'].forEach(a => service.localService.on(a, logAction('LOCAL', a)));
-    // ['created', 'updated', 'patched', 'removed'].forEach(a => service.localQueue.on(a, logAction('QUEUE', a)));
+    // ['created', 'updated', 'patched', 'removed'].forEach(a => service.local.on(a, logAction('LOCAL', a)));
+    // ['created', 'updated', 'patched', 'removed'].forEach(a => service.queue.on(a, logAction('QUEUE', a)));
   });
 
   it('sync works', () => {

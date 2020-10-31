@@ -4,7 +4,9 @@ const hooks = require('./messages.hooks');
 
 module.exports = function (app) {
   const options = {
-    paginate: app.get('paginate')
+    paginate: false, // app.get('paginate')
+    multi: true,
+    id: 'uuid'
   };
 
   // console.dir(Messages);

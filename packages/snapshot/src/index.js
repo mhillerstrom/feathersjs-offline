@@ -5,15 +5,16 @@ import makeDebug from 'debug';
 const debug = makeDebug('@feathersjs-offline/snapshot');
 
 function snapshot (service, baseQuery) {
-  debug(`start: ${JSON.stringify(baseQuery)}`);
+  const debug = (...args) => {console.log(...args)};
+  debug(`snapshot start: ${JSON.stringify(baseQuery)}`);
 
   const query = Object.assign({}, { $skip: 0, $limit: 200 }, baseQuery); // use max recs configured
   let fileDatas;
 
   return service.find({ query })
     .then(result => {
-      debug(`read ${(result.data || result).length} records`);
-      debug(`  read ${JSON.stringify(result.data || result)}`);
+      debug(`snapshot query = ${JSON.stringify(query)}, read ${(result.data || result).length} records`);
+      debug(`snapshot   read ${JSON.stringify(result.data || result)}`);
 
       if (!result.data) {
         return result;

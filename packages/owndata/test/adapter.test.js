@@ -3,7 +3,7 @@ const feathers = require('@feathersjs/feathers');
 const errors =  require('@feathersjs/errors');
 const adapterTests = require('@feathersjs/adapter-tests');
 const memory = require('feathers-memory');
-const { owndataWrapper } = require('../lib');
+const { owndataWrapper } = require('../src');
 
 const testSuite = adapterTests([
   '.options',
@@ -29,13 +29,16 @@ const testSuite = adapterTests([
   '.update + $select',
   '.update + id + query',
   '.update + NotFound',
+  '.update + query + NotFound',
   '.update + id + query id',
   '.patch',
   '.patch + $select',
   '.patch + id + query',
   '.patch multiple',
-  '.patch multi query',
+  '.patch multi query same',
+  '.patch multi query changed',
   '.patch + NotFound',
+  '.patch + query + NotFound',
   '.patch + id + query id',
   '.create',
   '.create + $select',
@@ -70,21 +73,23 @@ const testSuite = adapterTests([
   '.find + paginate + params'
 ]);
 
-let app;
-
 describe('OwndataWrapper - adapterTest', () => {
   beforeEach(() => {
   });
 
   // Let's perform all the usual adapter tests to verify full functionality
-  app = feathers();
+  let app = feathers();
   const events = ['testing'];
 
   app.use('people', memory({ events }));
-  owndataWrapper(app, 'people', {adapterTest: true, clearStorage: true});
+  owndataWrapper(app, 'people', {adapterTest: true, store: {}});
   testSuite(app, errors, 'people');
 
   app.use('people-customid', memory({ events, id: 'customid' }));
-  owndataWrapper(app, 'people-customid', {adapterTest: true, clearStorage: true});
+  owndataWrapper(app, 'people-customid', {adapterTest: true, store: {}});
   testSuite(app, errors, 'people-customid', 'customid');
+
+  app.use('people-uuid', memory({ events, id: 'uuid' }));
+  owndataWrapper(app, 'people-uuid', {adapterTest: true, store: {}});
+  testSuite(app, errors, 'people-uuid', 'uuid');
 });

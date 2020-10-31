@@ -26,7 +26,7 @@
     "prepublish": "npm run compile",
     "compile": "shx rm -rf lib/ && tsc",
     "test": "npm run compile && npm run mocha",
-    "mocha": "mocha --config ../../.mocharc.ts.json --recursive test/**.test.ts test/**/*.test.ts test/**.test.js test/**/*.test.js"
+    "mocha": "rm -rf ./.scratch; nyc mocha --config ../../.mocharc.ts.json --recursive test/**.test.ts test/**/*.test.ts test/**.test.js test/**/*.test.js"
   },
   "bugs": {
     "url": "https://github.com/mhillerstrom/feathersjs-offline/issues"
@@ -37,6 +37,7 @@
   "devDependencies": {
     "@feathersjs-offline/common": "^0.0.1",
     "@feathersjs/adapter-tests": "^4.5.2",
+    "@feathersjs/errors": "^4.5.8",
     "@feathersjs/express": "^4.5.8",
     "@feathersjs/feathers": "^4.5.8",
     "@feathersjs/socketio-client": "^4.5.8",

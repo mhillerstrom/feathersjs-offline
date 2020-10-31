@@ -42,14 +42,15 @@ Returns a new wrapped service instance initialized with the given options.
 import memory from 'feathers-memory');
 import { ownnetWrapper } from '@feathersjs-offline/ownnet');
 
+// Wrap local db with own-data
 app.use('/messages', memory());
 ownnetWrapper(app, 'messages');
 
-
+// Wrap local db with own-data (and special options)
 app.use('/messages', memory());
 ownnetWrapper(app, 'messages', { id, events, paginate }));
 
-// No prior app.use('snippets', ...); .... is also allowed
+// Wrap server path `snippets`. (No prior `app.use('snippets', ...);` )
 ownnetWrapper(app, 'snippets');
 ````
 
@@ -114,7 +115,7 @@ You can read the docs [here](https://docs.feathersjs.com/guides/offline-first/re
 
 For own-net implementations you must assure that the table (or collection) under control *must* implement both `uuid`, `updatedAt`, and `onServerAt` attributes.
 
-> **Pro tip:** If your key is not `uuid` then you have to manually set the key *before* calling `create` as you have no guarantee that the backend answers.
+> **Pro tip:** If your key is not `uuid` then you have to manually set the key on the client *before* calling `create` as you have no guarantee that the backend answers.
 
 > **Pro tip:** If you want the back-end to hold all users' data in one table (or collection), then all rows (or documents) must include a user identification (e.g. '`_id`' of `users`) and an appropriate query should be set in the `options` parameter when registering the replicator (e.g. `{query: {userId: <whatever-the-value-is>}}`).
 

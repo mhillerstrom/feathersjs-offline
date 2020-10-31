@@ -11,7 +11,7 @@ class OwnnetClass extends Owndata.Service {
     super(options);
     debug(`Constructor ended, options = ${JSON.stringify(this.options)}`);
 
-    this.type = 'ownnet';
+    this.type = 'own-net';
 
     debug('  Done.');
     return this;
@@ -114,14 +114,12 @@ class OwnnetClass extends Owndata.Service {
                       debug(mdebug);
                       debug(`  localService.patch(${JSON.stringify(res[self.id])}, ${JSON.stringify(res)})`);
                       debug(`  ev = ${JSON.stringify(ev)}`);
-                      console.error(`localService.patch(${res[self.id]}, ${JSON.stringify(res)}) FAIL, err.name=${err.name}, err.message=${err.message}`)
                       return false})
                 }
                 else
                   return true;
               })
               .catch(err => {
-                console.error(`localQueue.remove(null, ${JSON.stringify({query: {id: {$in: ids}}})}) FAIL, err.name=${err.name}, err.message=${err.message}`)
                 return false});
           })
           .catch(err => {

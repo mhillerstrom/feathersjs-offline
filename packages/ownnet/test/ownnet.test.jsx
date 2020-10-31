@@ -8,6 +8,7 @@ const { omit, remove } = _;
 
 const sampleLen = 5; // Size of test database (backend)
 const verbose = true; // Should the test be chatty?
+const desc = 'Own-net Wrapper';
 
 let app;
 let clientService;

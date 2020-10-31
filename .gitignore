@@ -32,7 +32,7 @@ node_modules
 dist/
 packages/**/lib/*
 ls.data/*
-scratch/*
+.scratch/*
 packages/**/.scratch/*
 packages/**/tmp*.js
 packages/*/app*.js

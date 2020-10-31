@@ -90,4 +90,7 @@ describe('RealtimeServerWrapper - adapterTest', () => {
 
   app.use('/people-customid', RealtimeService({ id: 'customid', events, adapterTest: true}, app));
   testSuite(app, errors, 'people-customid', 'customid');
+
+  app.use('/people-uuid', RealtimeService({ id: 'uuid', events, adapterTest: true}, app));
+  testSuite(app, errors, 'people-uuid', 'uuid');
 });

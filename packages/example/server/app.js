@@ -46,7 +46,12 @@ app.use(express.errorHandler({ logger }));
 
 app.hooks(appHooks);
 
-app.service('messages').create({text: 'This is a message from The Creator Himself!', uuid:'1', updatedAt: new Date() })
+// Publish all messages service events to channel 'offlineRealtimeDemo
+app.service('messages').publish((data, context) => {
+  return app.channel('offlineRealtimeDemo');
+});
+
+app.service('messages').create({text: 'This is a message from The Creator Himself!', updatedAt: new Date() })
   .then(res => console.log(`result: ${JSON.stringify(res)}`))
   .catch(err => console.error(`Create failed: ${JSON.stringify(err)}`));
 
