@@ -1,4 +1,3 @@
-// import Uberproto from 'uberproto';
 import EventEmitter from 'component-emitter';
 import errors from '@feathersjs/errors';
 import { _, hooks, stripSlashes } from '@feathersjs/commons';
@@ -22,23 +21,22 @@ else {
 
 const defaultOptions = {
   'id': 'id',
-  'store': {},
-  'useUuid': true,
+  'store': null,
+  'storage': null,
   'useShortUuid': true,
-  'useUpdatedAt': true,
   'trackMutations': true,
   'publication': null,
   'subscriber': () => {},
   'adapterTest': false,
-  'clearStorage': false,
-  'multi': false,
-  'paginate': false,
+  // 'multi': false,
+  // 'paginate': false,
   'matcher': sift,
-  sorter
+  sorter,
+  query: () => {return {};},
+  'fixedName': false
   };
 
-const _internalAlwaysSelect = ['uuid', 'updatedAt', 'onServerAt'];
-const _adapterTestStrip = ['uuid', 'updatedAt', 'onServerAt'];
+const _adapterTestStrip = ['uuid', 'updatedAt', 'onServerAt', 'deletedAt'];
 
 let nameIx = 0;
 
@@ -66,23 +64,32 @@ class OwndataClass extends AdapterService {
     let opts = Object.assign({}, defaultOptions, options);
     debug(`Constructor started, opts = ${JSON.stringify(opts)}`);
     super(opts);
-    debug(`Constructor ended, options = ${JSON.stringify(this.options)}`);
+    this.wOptions = opts;
+    debug(`Constructor ended, options = ${JSON.stringify(this.wOptions)}`);
 
-    this.type = 'owndata';
+    this.type = 'own-data';
 
     debug('  Done.');
     return this;
   }
 
-  _setup (app, path) {
+  async _setup (app, path) {
     debug(`SetUp('${path}') started`);
+    if (!this._setup) { // Assure we only run setup once
+      return;
+    }
+    this._setup = true;
+
     let self = this;
-    this.thisName = `${this.type}_offline_${nameIx++}_${path}`;
+    this.thisName = this.options.fixedName ? this.options.fixedName : `${this.type}_offline_${nameIx++}_${path}`;
 
     // Now we are ready to define the path with its underlying service (the remoteService)
     let old = app.services[path];
-    this.remoteService = old || app.service(path); // We want to get the default service (redirects to server or local service)
+    this.remoteService = old || app.service(path); // We want to get the default service (redirects to server or points to a local service)
     app.services[path] = self;  // Install this service instance
+// TODO: necessary??? vvvvv
+    if (typeof this.remoteService._setup === 'function')
+      this.remoteService._setup(app, path);
 
     // Get the service name and standard settings
     this.name = path;
@@ -91,9 +98,10 @@ class OwndataClass extends AdapterService {
     this.localServiceName = this.thisName + '_local';
     this.localServiceQueue = this.thisName + '_queue';
 
-    this.localSpecOptions = { name: this.localServiceName, storage: localStorage, store: this.options.store };
+    this.storage = this.wOptions.storage ? this.wOptions.storage : localStorage;
+    this.localSpecOptions = { name: this.localServiceName, storage: this.storage, store: this.wOptions.store };
     let localOptions = Object.assign({}, this.options, this.localSpecOptions);
-    let queueOptions = { id: 'id', name: this.localServiceQueue, storage: localStorage, paginate: null, multi: true };
+    let queueOptions = { id: 'id', name: this.localServiceQueue, storage: this.storage, paginate: null, multi: true, reuseKeys: this.wOptions.reuseKeys };
 
     debug(`  Setting up services '${this.localServiceName}' and '${this.localServiceQueue}'...`);
     app
@@ -103,27 +111,47 @@ class OwndataClass extends AdapterService {
     this.localService = app.service(this.localServiceName);
     this.localQueue = app.service(this.localServiceQueue);
 
-    if (this.options.clearStorage) {
-      debug('  Clearing storage...');
-      // We are running adapterTests, so make sure we are not carrying any old bagage along
-      this.clearService(this.localService, this.localServiceName);
-      this.clearService(this.localQueue, this.localServiceQueue);
-      localStorage.clear();
-    }
+    // We need to make sure that localService is properly initiated - make a dummy search
+    //    (one of the quirks of feathers-localstorage)
+    await this.localService.ready();
 
-    if (this.options.adapterTest) {
+    // Are we running adapterTests?
+    if (this.wOptions.adapterTest) {
       debug('  Setting up for adapter tests...');
       // Make sure the '_adapterTestStrip' attributes are stripped from results
-      this._strip = attrStrip(..._adapterTestStrip);
+      // However, we need to allow for having uuid as key
+      let stripValues = Object.assign([], _adapterTestStrip);
+      let idIx = stripValues.findIndex(v => {return v===this.id});
+      if (idIx > -1)  stripValues.splice(idIx, 1);
+      debug(`  stripValues: ${JSON.stringify(stripValues)}`);
+      this._strip = attrStrip(...stripValues);
     }
     else {
       this._strip = v => { return v };
     }
 
+    // Make sure we always select the key (id) in our results
     this._select = (params, ...others) => (res) => { return select(params, ...others, self.id)(res) }
 
+
+    // Do we care about tracking the mutations in the old-fashioned way? (Let's us use the many test cases already in place)
     // Let's prepare the pub/sub system
     this._eventEmitter = new EventEmitter();
+
+    this._publication = this.wOptions.publication;
+    if (this._publication && typeof this._publication !== 'function')
+      throw new Error.BadRequest(`option 'publication' must be a function or 'null'!`);
+
+      this._subscriber = this.wOptions.subscriber;
+    if (typeof this._subscriber !== 'function')
+      throw new Error.BadRequest(`option 'subscriber' must be a function!`);
+
+    if (this.wOptions.trackMutations) {
+      this._mutateStore = new MutateStore({ publication: this._publication, subscriber: this._subscriber, emit: this._eventEmitter.emit.bind(this), id: this.id });
+    }
+    else {
+      this._mutateStore = { mutate: (event, data, params) => { return data }, publication: null, subscriber: () => { } };
+    }
 
     this._listener = eventName => remoteRecord => this._mutateStore.mutate(
       eventName, remoteRecord, 0
@@ -139,122 +167,41 @@ class OwndataClass extends AdapterService {
     this.emit = this._eventEmitter.emit;
     this.on = this._eventEmitter.on;
 
-    this._publication = this.options.publication;
-    this._subscriber = this.options.subscriber;
-
-    // Do we care about tracking the mutations in the old-fashioned way? (Let's us use the many test cases already in place)
-    if (this.options.trackMutations) {
-      this._mutateStore = new MutateStore({ publication: this._publication, subscriber: this._subscriber, emitter: this });
-    }
-    else {
-      this._mutateStore = { mutate: (event, data, params) => { return data }, publication: null, subscriber: () => { } };
-    }
-
     // Initialize the service wrapper
     this.listening = false;
-    this.aPQ = 0; // Our semaphore for processing queued events
-    this.syncedAt = -1;
+    this.aIP = 0; // Our semaphore for internal processing
+    this.pQActive = false; // Our flag for avoiding more than one processing of queued operations at a time
+
+    // Determine latest registered sync timestamp
+    this.syncedAt = new Date(this.storage.getItem(this.thisName+'_syncedAt') || 0).toISOString();
+    this.storage.setItem(this.thisName+'_syncedAt', new Date(this.syncedAt).toISOString());
 
     // This is necessary if we get updates to options (e.g. .options.multi = ['patch'])
     if (!(this.remoteService instanceof AdapterService)) {
       this._listenOptions();
     }
-    // this.depends = [];
-    // this.watchingFn = null;
 
-    // this.options = /*this.*/observe(Object.assign(
-    //   {},
-    //   this.remoteService.options ? this.remoteService.options : {},
-    //   self.options
-    // ));
-    // /*this.*/watcher(() => {
-    //   // Update all changes to 'this.options' in both localService and remoteService
-    //   self.remoteService.options = Object.assign({}, self.remoteService.options, self.options);
-    //   self.localService.options = Object.assign({}, self.options, localSpecOptions);
-    //   console.log(`SETTING remote/localService.options = ${JSON.stringify(self.options)}`);
-    //   debug(`SETTING remote/localService.options = ${JSON.stringify(self.options)}`);
-    //   debug(`        depends: ${JSON.stringify(/*self.*/depends, null, 2)}`);
-    // });
-    // debug(`depends: ${JSON.stringify(/*this.*/depends, null, 2)}`);
+    this.addListeners();
 
     debug('  Done.');
   }
 
   _listenOptions () {
     // This is necessary if we get updates to options (e.g. .options.multi = ['patch'])
-    // this.depends = [];
-    // this.watchingFn = null;
 
     let self = this;
 
-    this.options = /*this.*/observe(Object.assign(
+    this.options = observe(Object.assign(
       {},
       this.remoteService.options ? this.remoteService.options : {},
-      self.options
+      self.wOptions
     ));
-    /*this.*/watcher(() => {
+    watcher(() => {
       // Update all changes to 'this.options' in both localService and remoteService
       self.remoteService.options = Object.assign({}, self.remoteService.options, self.options);
       self.localService.options = Object.assign({}, self.options, self.localSpecOptions);
-      // debug(`SETTING remote/localService.options = ${JSON.stringify(self.options)}`);
-      // debug(`        depends: ${JSON.stringify(/*self.*/depends, null, 2)}`);
     });
 
-  }
-
-  /**
-   * Make an observer proxy for the object given
-   * @param {object} data
-   */
-  // observe (data) {
-  //   let self = this;
-  //   let depends = self.depends;
-  //   let watchingFn = self.watchingFn;
-  //   return new Proxy(data, {
-  //     get (obj, key) {
-  //       if (self.watchingFn) {
-  //         if (!self.depends[key])  self.depends[key] = [];
-  //         self.depends[key].push(self.watchingFn);
-  //       }
-  //       return obj[key];
-  //     },
-  //     set (obj, key, val) {
-  //       obj[key] = val;
-  //       if (self.depends[key])
-  //         self.depends[key].forEach(cb => cb());
-  //       return true;
-  //     }
-  //   })
-  // }
-
-  /**
-   * Register a handler for the observer proxy
-   * @param {function} target The handler function
-   */
-  // watcher (target) {
-  //   let self = this;
-  //   self.watchingFn = target;
-  //   target();
-  //   self.watchingFn = null;
-  // }
-
-  clearService (service, name) {
-    // feathers-localstorage cannot fulfil .getEntries() before a standard operation has been performed
-    service.find()
-      .then(el => {
-        service.getEntries()
-          .then(elements => {
-            if (elements.length) {
-              let multi = service.options.multi;
-              service.options.multi = true;
-              service.remove();
-              service.options.multi = multi;
-            }
-          })
-          .catch(err => {
-            throw new errors.BadRequest(`UPS owndata.clearService (${name}): err.name=${err.name}, err.message=${err.message}`);
-          });
-      });
   }
 
   async getEntries (params) {
@@ -263,20 +210,19 @@ class OwndataClass extends AdapterService {
     await this.localService.getEntries(params)
       .then(entries => {
           res = entries
-      })
-      .catch(err => { throw err });
+      });
 
     return Promise.resolve(res)
       .then(this._strip)
-      .then(select(res, ..._internalAlwaysSelect));
+      .then(this._select(params));
   }
 
   async get (id, params) {
     debug(`Calling get(${JSON.stringify(id)}, ${JSON.stringify(params)}})`);
     return await this.localService.get(id, params)
       .then(this._strip)
-      .then(this._select())
-      .catch(err => { throw err });
+      .then(this._select(params))
+      .catch(err => {throw err});
   }
 
   async find (params) {
@@ -320,26 +266,36 @@ class OwndataClass extends AdapterService {
     // Is uuid unique?
     let [err, res] = await to(this.localService.find({ query: { 'uuid': newData.uuid } }));
     if (res && res.length) {
-      throw new errors.BadRequest(`Optimistic create requires unique uuid. (own-data) res=${JSON.stringify(res)}`);
+      throw new errors.BadRequest(`Optimistic create requires unique uuid. (${this.type}) res=${JSON.stringify(res)}`);
     }
 
     // We apply optimistic mutation
     newData = this._mutateStore.mutate('created', newData, 1);
-    const tmp = select(params, ..._internalAlwaysSelect)(newData);
     let newParams = shallowClone(params);
-    this.disallowProcessingQueue();
+    this.disallowInternalProcessing();
     let queueId = await this._addQueuedEvent('create', newData, shallowClone(newData), cleanUpParams(params));
 
     // Start actual mutation on remote service
-    [err, res] = await to(this.localService.create(newData, params));
+    [err, res] = await to(this.localService.create(newData, shallowClone(params)));
     if (!err) {
-      this.remoteService.create(res, params)
+      this.remoteService.create(res, shallowClone(params))
         .then(async rres => {
+          self._mutateStore.mutate('created', rres, 0);
           await self._removeQueuedEvent('create', queueId, newData, newData.updatedAt);
-          await self.localService.patch(rres[self.id], rres);
+          await self.localService.patch(rres[self.id], rres)
+            .catch(async err => {
+              // We have to test for a possible race condition
+              let [lerr, lres] = await to( self.localService.get(id) );
+              let [rerr, rres] = await to( self.remoteService.get(id) );
+              if (!lres && rres) {
+                // Something is very wrong
+                throw new errors.NotFound(`Create. id = '${id} not found on localService. Please report error!`);
+              }
+              // We have simply been overtaken by a remove request.
+            });
 
           // Ok, we have connection - empty queue if we have any items queued
-          this.allowProcessingQueue();
+          self.allowInternalProcessing();
           await self._processQueuedEvents();
         })
         .catch(async rerr => {
@@ -353,18 +309,18 @@ class OwndataClass extends AdapterService {
             await self.localService.remove(res[self.id], params);
             throw rerr;
           }
-          this.allowProcessingQueue();
+          self.allowInternalProcessing();
         });
     }
     else {
-      await self._removeQueuedEvent('create', queueId, newData, newData.updatedAt);
-      this.allowProcessingQueue();
+      await this._removeQueuedEvent('create', queueId, newData, newData.updatedAt);
+      this.allowInternalProcessing();
       throw err;
     }
 
     return Promise.resolve(res)
       .then(this._strip)
-      .then(select(params));
+      .then(this._select(params));
   }
 
   async update (id, data, params = {}) {
@@ -372,7 +328,7 @@ class OwndataClass extends AdapterService {
     let self = this;
     let [err, res] = await to(this.localService.get(id));
     if (!(res && res !== {})) {
-      throw new errors.NotFound(`Trying to update non-existing ${this.id}=${id}. (own-data) err=${JSON.stringify(err)}`);
+      throw new errors.NotFound(`Trying to update non-existing ${this.id}=${id}. (${this.type}) err=${JSON.stringify(err)}`);
     }
 
     // We do not allow the client to update the onServerAt attribute
@@ -388,40 +344,54 @@ class OwndataClass extends AdapterService {
 
     // Optimistic mutation
     newData = this._mutateStore.mutate('updated', newData, 1);
-    this.disallowProcessingQueue();
+    this.disallowInternalProcessing();
     let queueId = await this._addQueuedEvent('update', newData, id, shallowClone(newData), cleanUpParams(params));
 
     // Start actual mutation on remote service
-    [err, res] = await to(this.localService.update(id, newData, params));
+    [err, res] = await to(this.localService.update(id, newData, shallowClone(params)));
     if (!err) {
-      this.remoteService.update(id, res, params)
+      this.remoteService.update(id, res, shallowClone(params))
         .then(async rres => {
+          self._mutateStore.mutate('updated', rres, 0);
           await self._removeQueuedEvent('update', queueId, newData, res.updatedAt);
-          await self.localService.update(res[self.id], res, params);
-          this.allowProcessingQueue();
+          await self.localService.update(res[self.id], res, shallowClone(params))
+            .catch(async err => {
+              // We have to test for a possible race condition
+              let [lerr, lres] = await to( self.localService.get(id) );
+              // We have to test for a possible race condition
+              let [rerr, rres] = await to( self.remoteService.get(id) );
+              if (!lres && rres) {
+                // Something is very wrong
+                throw new errors.NotFound(`Update: id = '${id} not found on localService. Please report error!`);
+              }
+              // We have simply been overtaken by a remove request.
+            });
+          self.allowInternalProcessing();
           await self._processQueuedEvents();
         })
         .catch(async rerr => {
           if (rerr.className === 'timeout' && rerr.name === 'Timeout') {
-            debug(`_update TIMEOUT: ${JSON.stringify(rerr)}`);
+            debug(`_update TIMEOUT: ${rerr.name}, ${rerr.message}`);
+            // Let's silently ignore missing connection to server
+            // We'll catch-up next time we get a connection
           } else {
-            debug(`_update ERROR: ${JSON.stringify(rerr)}`);
+            debug(`_update ERROR: ${rerr.name}, ${rerr.message}`);
             self._mutateStore.mutate('updated', data, 2);
             await self._removeQueuedEvent('update', queueId, newData, res.updatedAt);
             await self.localService.patch(id, beforeRecord);
           }
-          this.allowProcessingQueue();
+          self.allowInternalProcessing();
         });
     }
     else {
-      await self._removeQueuedEvent('update', queueId, newData, newData.updatedAt);
-      this.allowProcessingQueue();
+      await this._removeQueuedEvent('update', queueId, newData, newData.updatedAt);
+      this.allowInternalProcessing();
       throw err;
     }
 
     return Promise.resolve(newData)
       .then(this._strip)
-      .then(select(params));
+      .then(this._select(params));
   }
 
   async patch (id, data, params = {}) {
@@ -458,40 +428,53 @@ class OwndataClass extends AdapterService {
     const beforeRecord = shallowClone(res);
     const afterRecord = Object.assign({}, beforeRecord, data);
     const newData = this._mutateStore.mutate('patched', afterRecord, 1);
-    this.disallowProcessingQueue();
+    this.disallowInternalProcessing();
     const queueId = await this._addQueuedEvent('patch', newData, id, shallowClone(newData), cleanUpParams(params));
 
     // Start actual mutation on remote service
-    [err, res] = await to(this.localService.patch(id, newData, params));
+    [err, res] = await to(this.localService.patch(id, newData, shallowClone(params)));
     if (!err) {
-      this.remoteService.patch(id, res, params)
+      this.remoteService.patch(id, res, shallowClone(params))
         .then(async rres => {
-          await self._removeQueuedEvent('patch', queueId, newData, res.updatedAt);
-          await this.localService.patch(id, rres, params);
-          this.allowProcessingQueue();
+          self._mutateStore.mutate('patched', rres, 0);
+          await self._removeQueuedEvent('patch', queueId, {no:1}/*newData*/, res.updatedAt);
+          await self.localService.patch(id, rres, shallowClone(params))
+            .catch(async err => {
+              // We have to test for a possible race condition
+              let [lerr, lres] = await to( self.localService.get(id) );
+              let [rerr, rres] = await to( self.remoteService.get(id) );
+              if (!lres && rres) {
+                // Something is very wrong
+                throw new errors.NotFound(`Patch: id = '${id} not found on localService. Please report error!`);
+              }
+              // We have simply been overtaken by a remove request.
+            });
+          self.allowInternalProcessing();
           await self._processQueuedEvents();
         })
         .catch(async rerr => {
           if (rerr.className === 'timeout' && rerr.name === 'Timeout') {
-            debug(`_patch TIMEOUT: ${JSON.stringify(rerr)}`);
+            debug(`_patch TIMEOUT: ${rerr.name}, ${rerr.message}`);
+            // Let's silently ignore missing connection to server
+            // We'll catch-up next time we get a connection
           } else {
-            debug(`_patch ERROR: ${JSON.stringify(rerr)}`);
+            debug(`_patch ERROR: ${rerr.name}, ${rerr.message}`);
             self._mutateStore.mutate('updated', afterRecord, 2);
-            await self._removeQueuedEvent('patch', queueId, newData, res.updatedAt);
+            await self._removeQueuedEvent('patch', queueId, {no:2}/*newData*/, res.updatedAt);
             await self.localService.patch(id, beforeRecord);
           }
-          this.allowProcessingQueue();
+          self.allowInternalProcessing();
         });
     }
     else {
-      await self._removeQueuedEvent('patch', queueId, newData, newData.updatedAt);
-      this.allowProcessingQueue();
+      await this._removeQueuedEvent('patch', queueId, {no:3}/*newData*/, newData.updatedAt);
+      this.allowInternalProcessing();
       throw err;
     }
 
     return Promise.resolve(newData)
       .then(this._strip)
-      .then(select(params));
+      .then(this._select(params));
   }
 
   async remove (id, params = {}) {
@@ -523,46 +506,46 @@ class OwndataClass extends AdapterService {
     // Optimistic mutation
     const beforeRecord = shallowClone(res);
     const oldData = this._mutateStore.mutate('removed', beforeRecord, 1);
-    this.disallowProcessingQueue();
+    this.disallowInternalProcessing();
     const queueId = await this._addQueuedEvent('remove', beforeRecord, id, cleanUpParams(params));
 
     // Start actual mutation on remote service
-    [err, res] = await to(this.localService.remove(id, params));
+    [err, res] = await to(this.localService.remove(id, shallowClone(params)));
     if (!err) {
-      this.remoteService.remove(id, params)
-        .then(async res => {
-          await self._removeQueuedEvent('remove', queueId, beforeRecord, null);
-          this.allowProcessingQueue();
+      this.remoteService.remove(id, shallowClone(params))
+        .then(async rres => {
+          self._mutateStore.mutate('removed', rres, 0);
+          await to(self._removeQueuedEvent('remove', queueId, beforeRecord, null));
+          self.allowInternalProcessing();
           await self._processQueuedEvents();
         })
-        .catch(async err => {
-          if (err.className === 'timeout' && err.name === 'Timeout') {
-            debug(`_remove TIMEOUT: ${JSON.stringify(err)}`);
+        .catch(async rerr => {
+          if (rerr.className === 'timeout' && rerr.name === 'Timeout') {
+            debug(`_remove TIMEOUT: ${rerr.name}, ${rerr.message}`);
           } else {
-            debug(`_remove ERROR: ${JSON.stringify(err.name)}`);
+            debug(`_remove ERROR: ${rerr.name}, ${rerr.message}`);
             if (beforeRecord.onServerAt === 0) {
               // In all likelihood the document/item was never on the server
               // so we choose to silently ignore this situation
             } else {
-              console.error(`_remove ERROR: name=${err.name}, message=${err.message}, ${JSON.stringify(err)}`);
               // We have to restore the record to  the local DB
-              await self.localService.create(beforeRecord, null);
+              await to(self.localService.create(beforeRecord, null));
               self._mutateStore.mutate('created', beforeRecord, 2);
               await self._removeQueuedEvent('remove', queueId, beforeRecord, null);
             }
-            this.allowProcessingQueue();
           }
+          self.allowInternalProcessing();
         });
     }
     else {
-      await self._removeQueuedEvent('remove', queueId, beforeRecord, null);
-      this.allowProcessingQueue();
+      await this._removeQueuedEvent('remove', queueId, beforeRecord, null);
+      this.allowInternalProcessing();
       throw err;
     }
 
     return Promise.resolve(oldData)
       .then(this._strip)
-      .then(select(params));
+      .then(this._select(params));
   }
 
   // Necessary for adapterTests vvv
@@ -595,25 +578,58 @@ class OwndataClass extends AdapterService {
   }
   // Necessary for adapterTests ^^^
 
+  // Allow access to our internal services (for application hooks and the demo). Use with care!
+  get remote() {
+    return this.remoteService;
+  }
+
+  set remote(value) { // Do not allow reassign
+    throw new errors.Forbidden(`You cannot change value of remote!`);
+  }
+
+  get local() {
+    return this.localService;
+  }
+
+  set local(value) { // Do not allow reassign
+    throw new errors.Forbidden(`You cannot change value of local!`);
+  }
+
+  get queue() {
+    return this.localQueue;
+  }
+
+  set queue(value) { // Do not allow reassign
+    throw new errors.Forbidden(`You cannot change value of queue!`);
+  }
+
   /* Queue handling */
 
   /**
-   * Allow queue processing (allowed when semaphore this.aPQ === 0)
+   * Allow queue processing (allowed when semaphore this.aIP === 0)
    */
-  allowProcessingQueue () {
-    this.aPQ--;
+  allowInternalProcessing () {
+    this.aIP--;
   }
   /**
-   * Disallow queue processing (when semaphore this.aPQ !== 0)
+   * Disallow queue processing (when semaphore this.aIP !== 0)
    */
-  disallowProcessingQueue () {
-    this.aPQ++;
+  disallowInternalProcessing () {
+    // // Do we have an active timer for DB changes
+    // if (this.watchKeeper) {
+    //   clearTimeout(this.watchKeeper);
+    // }
+
+    this.aIP++;
+
+    // // Make sure we are not caught in an endless loop
+    // this.watchKeeper = setTimeout(() => {this.aIP = 0}, this.timeout+5000);
   }
   /**
    * Is queue processing allowed?
    */
-  processingQueueAllowed () {
-    return this.aPQ === 0;
+  internalProcessingAllowed () {
+    return this.aIP === 0;
   }
 
   async _addQueuedEvent (eventName, localRecord, arg1, arg2, arg3) {
@@ -636,49 +652,44 @@ class OwndataClass extends AdapterService {
 
   async _processQueuedEvents () {
     debug(`processQueuedEvents (${this.type}) entered`);
-    if(!this.processingQueueAllowed()) {
-      return
+    if(!this.internalProcessingAllowed() || this.pQActive) {
+      // console.log(`processingQueuedEvents: internalProcessing (aIP=${this.aIP}), pQActive=${this.pQActive}`);
+      return false;
     }
+    this.pQActive = true;
 
     let [err, store] = await to(this.localQueue.getEntries({query:{$sort: {[this.id]: 1}}}));
     if (!(store && store !== {})) {
-      return;
+      this.pQActive = false;
+      return true;
     }
 
     this.removeListeners();
 
+    debug(`  processing ${store.length} queued entries...`);
+    let self = this;
     let stop = false;
     while (store.length && !stop) {
       const el = store.shift();
       const event = el.eventName;
+      debug(`    >> ${JSON.stringify(el)} <<`);
 
       try {
-        // remove _fail and _timeout properties from query (as a courtesy of testing)
-        // for (const i in el.args) {
-        //   let arg = el.args[i];
-        //   if (arg && arg['query']) {
-        //     delete arg.query._fail;
-        //     delete arg.query._timeout;
-        //   }
-        // }
-        // console.error(`ProcessingQueue: event=${event}(${JSON.stringify(el.args[0], null, 2)}, ${JSON.stringify(el.args[1], null, 2)}, ${JSON.stringify(el.args[2], null, 2)})\npath=${this.name} (${this.localServiceQueue})`);
-        let args = el.args;
-        let arg1 = el.arg1 || null;
         let arg2 = el.arg2 || null;
         let arg3 = el.arg3 || null;
-        // this.remoteService[event](...args)
-        this.remoteService[event](arg1, arg2, arg3)
+        debug(`    processing: event=${event}, arg1=${JSON.stringify(el.arg1)}, arg2=${JSON.stringify(arg2)}, arg3=${JSON.stringify(arg3)}`)
+        await self.remoteService[event](el.arg1, arg2, arg3)
           .then(async res => {
-            await to(this.localQueue.remove(el.id));
+            await to(self.localQueue.remove(el.id));
             if (event !== 'remove') {
               // Let any updates to the document/item on server reflect on the local DB
-              await to(this.localService.patch(res[this.id], res));
+              await to(self.localService.patch(res[self.id], res));
             }
           })
           .catch(async err => {
             if (el.record.onServerAt === 0  &&  event === 'remove') {
               // This record has probably never been on server (=remoteService), so we silently ignore the error
-              await to(this.localQueue.remove(el.id));
+              await to(self.localQueue.remove(el.id));
             }
             else {
               // The connection to the server has probably been cut - let's continue at another time
@@ -689,8 +700,13 @@ class OwndataClass extends AdapterService {
         console.error(`Got ERROR ${JSON.stringify(error.name, null, 2)}, ${JSON.stringify(error.message, null, 2)}`);
       }
     }
+
+    debug(`  processing ended, stop=${stop}`);
+
     this.addListeners();
-    return true;
+    this.pQActive = false;
+
+    return !stop;
   }
 
   /* Event listening */
@@ -702,21 +718,19 @@ class OwndataClass extends AdapterService {
     const service = this.remoteService;
     const eventListeners = this._eventListeners;
 
-    service.on('created', eventListeners.created);
-    service.on('updated', eventListeners.updated);
-    service.on('patched', eventListeners.patched);
-    service.on('removed', eventListeners.removed);
+    Object.keys(eventListeners).forEach(ev => service.on(ev, eventListeners[ev]));
 
     this.listening = true;
 
     let self = this;
     this.localService.getEntries()
       .then(store => {
-        self.emit('events', store.data, { action: 'add-listeners' });
-        self._subscriber(store.data, { action: 'add-listeners' });
+        self.emit('events', store, { action: 'add-listeners' });
+        self._subscriber(store, { action: 'add-listeners' });
       })
       .catch(err => {
-        throw new Error(`Bad result reading local service '${self.localServiceName}', err = ${err}`);
+        console.trace('Trace from add-listeners:');
+        throw new Error(`add-listeners: Bad result reading local service '${self.localServiceName}', err = ${err.name}, ${err.message}`);
       })
   };
 
@@ -726,34 +740,45 @@ class OwndataClass extends AdapterService {
       const service = this.remoteService;
       const eventListeners = this._eventListeners;
 
-      service.removeListener('created', eventListeners.created);
-      service.removeListener('updated', eventListeners.updated);
-      service.removeListener('patched', eventListeners.patched);
-      service.removeListener('removed', eventListeners.removed);
+      Object.keys(eventListeners).forEach(ev => service.removeListener(ev, eventListeners[ev]));
 
       this.listening = false;
+      let self = this;
       this.localService.getEntries()
-        .then((store) => {
-          this.emit('events', store.data, { action: 'remove-listeners' });
-          this._subscriber(store.data, { action: 'remove-listeners' });
-        });
-    }
+        .then(store => {
+          self.emit('events', store, { action: 'remove-listeners' });
+          self._subscriber(store, { action: 'remove-listeners' });
+        })
+        .catch(err => {
+          throw new Error(`remove-listeners: Bad result reading local service '${self.localServiceName}', err = ${err.name}, ${err.message}`);
+        })
+      }
   }
 
   /* Synchronization */
 
   /**
    * Synchronize the relevant documents/items from the remote db with the local db.
+   *
+   * @param (boolean) bAll If true, we try to sync for the beginning of time.
    * @returns (boolean) True if the process was completed, false otherwise.
    */
-  async sync () {
-    const syncOptions = await this._getSyncOptions();
+  async sync (bAll = false) {
+    while (!this.internalProcessingAllowed()) {
+      // console.log(`sync: await internalProcessing (aIP=${this.aIP})`);
+      await new Promise(resolve => {
+        setTimeout(() => {
+          resolve(true);
+        }, 100);
+      });
+    }
+
+    const syncOptions = await this._getSyncOptions(bAll);
     debug(`${this.type}.sync(${JSON.stringify(syncOptions)}) started...`);
     let self = this;
     let result = true;
 
     let [err, snap] = await to( snapshot(this.remoteService, syncOptions) )
-    debug(`  err = ${err?err.name:''}, snap = ${JSON.stringify(snap)}`);
     if (err) { // we silently ignore any errors
       if (err.className === 'timeout' && err.name === 'Timeout') {
         debug(`  TIMEOUT: ${JSON.stringify(err)}`);
@@ -773,12 +798,15 @@ class OwndataClass extends AdapterService {
      *  - otherwise
      *    - if it is not marked as deleted
      *      - create the row
+     * Moreover we track the `onServerAt` to determine latest sync timestamp
      */
     debug(`  Applying received snapshot data... (${snap.length} items)`);
+    let syncTS = new Date(0).toISOString();
     await Promise.all(snap.map(async (v) => {
       let [err, res] = await to( self.localService.get(v[self.id]) );
       if (res) {
-        if (v.softDelete) {
+        syncTS = syncTS < v.onServerAt ? v.onServerAt : syncTS;
+        if (v.deletedAt) {
           [err, res] = await to( self.localService.remove(v[self.id]));
         }
         else {
@@ -787,32 +815,48 @@ class OwndataClass extends AdapterService {
         if (err) { result = false; }
       }
       else {
-        if (!v.softDelete) {
+        if (!v.deletedAt) {
+          syncTS = syncTS < v.onServerAt ? v.onServerAt : syncTS;
           [err, res] = await to( self.localService.create(v));
           if (err) { result = false; }
         }
       }
     }));
 
-    if (result)
-      await this._processQueuedEvents();
+    // Save last sync timestamp
+    this.storage.setItem(this.thisName+'_syncedAt', new Date(syncTS).toISOString());
+
+    if (result) // Wait until internal Processing is ok
+      while (!await this._processQueuedEvents()) {
+        await new Promise(resolve => {
+          setTimeout(() => {
+            resolve(true);
+          }, 100);
+        });
+      };
+
+    if (this.options.trackMutations) {
+      let data = await this.getEntries();
+      self.emit('events', data, { action: 'snapshot' });
+    }
 
     return result;
   }
 
   /**
    * Determine the relevant options necessary for synchronizing this service.
-   * @returns (object) The relevant options.
+   *
+   * @param (boolean) bAll If true, we try to sync for the beginning of time.
+   * @returns (object) The relevant options for snapshot().
    */
-  async _getSyncOptions () {
+  async _getSyncOptions (bAll) {
     let sQuery = this.query ? (this.query.query || {}) : {};
-    let query = Object.assign({}, sQuery, /*{$or: [{onServerAt: {$lt: 0}}, {onServerAt: {$gt: 0}}]},*/ {$sort: {onServerAt: 1}});
-    let [err, res] = await to( this.localService.getEntries({query: {onServerAt: {$ne: 0}, $sort: {onServerAt: 1}}}) );
-    if (res && res.length) {
-      let syncMin = new Date(res[0].onServerAt).getTime();
-      let syncMax = new Date(res[res.length-1].onServerAt).getTime();
-      query = Object.assign({}, query, /*{$or: [{onServerAt: {$lt: syncMin}}, {onServerAt: {$gt: syncMax}}]},*/ {$sort: {onServerAt: 1}});
-      delete query.softDelete;
+    let query = Object.assign({}, sQuery, {offline:{_forceAll: true}, $sort: {onServerAt: 1}});
+    let ts = bAll ? new Date(0).toISOString() : this.syncedAt;
+    let syncTS = ts < this.syncedAt ? ts : this.syncedAt;
+    // }
+    if (syncTS !== new Date(ts)) {
+      query.offline.onServerAt = new Date(syncTS);
     }
 
     return query;
@@ -858,6 +902,7 @@ function init (options) {
 
 let Owndata = init;
 
+
 /**
  * A owndataWrapper is a CLIENT adapter wrapping for FeathersJS services extending them to
  * implement the offline own-data principle (**LINK-TO-DOC**).
@@ -881,7 +926,7 @@ let Owndata = init;
  *
  */
 function owndataWrapper (app, path, options = {}) {
-  debug(`OwndataWrapper started on path '${path}'`)
+  debug(`owndataWrapper started on path '${path}'`)
   if (!(app && app.version && app.service && app.services)) {
     throw new errors.Unavailable(`The FeathersJS app must be supplied as first argument`);
   }
@@ -905,6 +950,7 @@ module.exports = { init, Owndata, owndataWrapper };
 
 init.Service = OwndataClass;
 
+
 // --- Helper functions
 
 /**
@@ -927,14 +973,14 @@ function cleanUpParams (parameters) {
   return p;
 }
 
-/* Support for updating arapter options through the wrapper */
+/* Support for updating adapter options through the wrapper */
 
 let depends = [];
 let watchingFn = null;
 
 /**
  * Package the data to be observed in a proxy that updates according to
- * relevant recipies registered with watcher().
+ * relevant recipes registered with watcher().
  * @param {object} data The data object to observe
  */
 function observe (data) {

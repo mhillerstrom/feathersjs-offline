@@ -43,27 +43,34 @@ Returns a new wrapped service instance initialized with the given options.
 import memory from 'feathers-memory');
 import { owndataWrapper } from '@feathersjs-offline/owndata');
 
+// Wrap local db with own-data
 app.use('/messages', memory());
 owndataWrapper(app, 'messages');
 
-
+// Wrap local db with own-data (and special options)
 app.use('/messages', memory());
 owndataWrapper(app, 'messages', { id, events, paginate }));
 
-// No prior app.use('snippets', ...); .... is also allowed
+// Wrap server path `snippets`. (No prior `app.use('snippets', ...);` )
 ownnetWrapper(app, 'snippets');
 ````
 
 ### Options:
 All options available for the wrapped adapter can be used in addition to:
 
-- `id` (optional, default: 'id') - The name of the id field property.
+- `id` (optional, default: `id`) - The name of the id field property.
+- `store` (optional) - An object used for initializing the storage (see `feathers-memory`).
+- `storage` (optional, default: `localStorage`) - Decides where data will be stored locally. You can choose between `localStorage` and `sessionStorage` on the client, but only `localStorage` on a NodeJS app.
 - `events` (optional) - A list of custom service events sent by this service.
 - `paginate` (optional) - A pagination object containing a default and max page size.
 - `whitelist` (optional) - A list of additional query parameters to allow.
 - `multi` (optional) - Allow create with arrays and update and remove with id null to change multiple items. Can be true for all methods or an array of allowed methods (e.g. [ 'remove', 'create' ]).
-- `useShortUuid` (optional, default `true`) - Generate short `uuid`s. If `false` long `uuid`s are generated. This option should match whatever you choose on the client.
-- `adapterTest` (optional, default `false`) - This is usually only used for running adapter tests as it suppresses the generation of `uuid`, and updating of `onServerAt`.
+- `useShortUuid` (optional, default `true`) - Generate short `uuid`s (sufficient for most applications). If `false` long `uuid`s are generated. This option should match whatever you choose on the server side.
+- `trackMutations` (optional, default `true`) - Should we track mutations à la the `feathers-realtime-offline` way. Today the preferred way is to register a listener on the service on the relevant message (`created`, `updated`, `patched`, or `removed`). We have three services: two on the client (`app.service('mypath').local` and `app.service('mypath').queue`) and one on the "server" (`app.service('mypath').remote`). The "server" can be the client, but it's hard to imagine the real world usefulness of this...
+- `publication` (optional, default `null`) - 
+- `subscriber` (optional, default `() => {}`) - 
+- `fixedName` (optional, default `false`) - 
+- `adapterTest` (optional, default `false`) - This is usually only used for running adapter tests as it suppresses results containing `uuid`, `updatedAt`, `deletedAt`, and `onServerAt`.
 
 ### Example
 Here is an example of a FeathersJS server with a messages in-memory service that supports pagination:
@@ -89,7 +96,7 @@ const app = feathers();
 // Configure socketio 
 app.configure(socketio(socket));
 
-// Create an own-net FeathersJS service with a default page size of 2 items
+// Create an own-data FeathersJS service with a default page size of 2 items
 // and a maximum size of 4
 app.use('/messages', Owndata({
   paginate: {
@@ -111,13 +118,13 @@ For at more useful example see `@feathersjs-offline/example`.
 
 ## Documentation
 
-You can read the docs [here](https://docs.feathersjs.com/guides/offline-first/readme.html).
+You can read the docs [here](https://auk.docs.feathersjs.com/guides/offline-first).
 
-For own-data implementations you must assure that the table (or collection) under control *must* implement both `uuid`, `updatedAt`, and `onServerAt` attributes.
+For own-data implementations you must assure that the table (or collection) under control *must* implement attributes `uuid`, `updatedAt`, `onServerAt`, and `deletedAt`.
 
-> **Pro tip:** If your key is not `uuid` then you have to manually set the key *before* calling `create` as you have no guarantee that the backend answers.
+> **Pro tip:** If your key is not `uuid` then you have to manually set the key on the client *before* calling `create` as you have no guarantee that the backend answers. You set your key with the `id` parameter.
 
-> **Pro tip:** If you want the back-end to hold all users' data in one table (or collection), then all rows (or documents) must include a user identification (e.g. '`_id`' of `users`) and an appropriate query should be set in the `options` parameter when registering the replicator (e.g. `{query: {userId: <whatever-the-value-is>}}`).
+> **Pro tip:** If you want the back-end to hold all users' data in one table (or collection), then all rows (or documents) must include a user identification (e.g. '`_id`' of `users`) and an appropriate query should be set in the `query` parameter when registering the replicator (e.g. `{query: {userId: <whatever-the-value-is>}}`).
 
 Also, updates to the client from a requested sync will not execute any hooks but any queued events on the device will (both on back-end and on any other devices).
 
