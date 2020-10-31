@@ -1,5 +1,5 @@
 {
   "timeout": 20000,
-  "reporter": "Dot",
+  "reporter": "Spec", // "Dot",
   "exit": true
 }

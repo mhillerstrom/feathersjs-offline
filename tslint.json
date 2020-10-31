@@ -5,18 +5,18 @@
   ],
   "linterOptions": {
     "exclude": [
-      "packages/authentication/lib/**",
-      "packages/authentication-local/lib/**",
-      "packages/authentication-client/lib/**",
-      "packages/authentication-oauth/lib/**",
-      "packages/configuration/lib/**",
-      "packages/commons/lib/**",
-      "packages/transport-commons/lib/**",
-      "packages/tests/lib/**",
+      "packages/common/lib/**",
+      "packages/optimistic-mutation/lib/**",
+      "packages/owndata/lib/**",
+      "packages/ownnet/lib/**",
+      "packages/server/lib/**",
+      "packages/snapshot/lib/**",
+      "packages/example/lib/**",
       "**/node_modules/**",
       "**/coverage/**",
       "**/dist/**",
-      "**/*.dist.js"
+      "**/*.dist.js",
+      "**/app.js"
     ]
   },
   "rules": {
@@ -34,7 +34,8 @@
     "only-arrow-functions": false,
     "no-empty": false,
     "no-shadowed-variable": false,
-    "no-namespace": [ true, "allow-declarations" ]
+    "no-namespace": [ true, "allow-declarations" ],
+    "no-console": [ false ]
   },
   "jsRules": true,
   "rulesDirectory": []

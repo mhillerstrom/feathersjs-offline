@@ -1,0 +1,1 @@
+../../../dist/feathersjs-offline-ownnet.js

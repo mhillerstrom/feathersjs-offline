@@ -1,0 +1,62 @@
+{
+  "name": "example",
+  "version": "0.0.1",
+  "description": "A FeathersJS exapmle application showcasing offline realtime support (own-data/own-net)",
+  "keywords": [
+    "feathers",
+    "offline",
+    "realtime",
+    "example"
+  ],
+  "author": "Michael Hillerström <michael@hillerstrom.name>",
+  "homepage": "https://github.com/mhillerstrom/feathersjs-offline/tree/master/packages/example#readme",
+  "license": "ISC",
+  "main": "app/example.js",
+  "directories": {
+    "lib": "lib",
+    "test": "tests"
+  },
+  "files": [
+    "lib"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mhillerstrom/feathersjs-offline.git"
+  },
+  "scripts": {
+    "prepublish": "npm run compile",
+    "compile": "shx rm -rf lib/ && tsc",
+    "test": "npm run compile && npm run mocha",
+    "mocha": "mocha --config ../../.mocharc.ts.json --recursive test/**.test.ts test/**/*.test.ts test/**.test.js test/**/*.test.js"
+  },
+  "bugs": {
+    "url": "https://github.com/mhillerstrom/feathersjs-offline/issues"
+  },
+  "dependencies": {
+    "@feathersjs/adapter-commons": "^4.5.2",
+    "@feathersjs/configuration": "^4.5.3",
+    "@feathersjs/errors": "^4.5.3",
+    "@feathersjs/express": "^4.5.8",
+    "@feathersjs/feathers": "^4.5.8",
+    "@feathersjs/socketio": "^4.5.8",
+    "@feathersjs/transport-commons": "^4.5.3",
+    "@feathersjs-offline/server": "^0.0.1",
+    "@feathersjs-offline/owndata": "^0.0.1",
+    "@feathersjs-offline/ownnet": "^0.0.1",
+    "compression": "^1.7.4",
+    "cors": "^2.8.5",
+    "feathers-memory": "^4.1.0",
+    "helmet": "^3.23.3",
+    "serve-favicon": "^2.5.0",
+    "winston": "^3.3.3"
+  },
+  "devDependencies": {
+    "axios": "^0.19.2",
+    "eslint": "^6.8.0",
+    "mocha": "^8.1.3",
+    "nodemon": "^2.0.4",
+    "shx": "^0.3.2",
+    "sift": "^13.3.5",
+    "ts-node": "^9.0.0",
+    "typescript": "^4.0.2"
+  }}
