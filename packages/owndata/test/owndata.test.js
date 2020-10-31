@@ -16,8 +16,7 @@ const serviceName = '/from';
 let app;
 let clientService;
 
-
-async function getRows(service) {
+async function getRows (service) {
   let gRows = null;
   gRows = await service.find({ query: { id: { $gte: 0 }, $sort: { order: 1 } } });
   return gRows;
@@ -33,7 +32,7 @@ async function getRows(service) {
  * @param {string} service The service to be hooked into
  * @param {boolean} allowFail Will we allow the usage of _fail? (Default false)
  */
-function setUpHooks(type, serviceName, service, allowFail = false) {
+function setUpHooks (type, serviceName, service, allowFail = false) {
 
   service.hooks({
     before: {
@@ -56,7 +55,7 @@ function setUpHooks(type, serviceName, service, allowFail = false) {
           return context;
         }
       }
-    ]},
+    ]}
     // error: {
     //   all: context => {
     //     if (verbose) {
@@ -68,7 +67,7 @@ function setUpHooks(type, serviceName, service, allowFail = false) {
   });
 }
 
-function setupServices() {
+function setupServices () {
   app = feathers();
 
   app.use(serviceName, memory({ multi: true }));
@@ -182,10 +181,10 @@ describe(`${desc} - optimistic mutation online`, () => {
 
           assertDeepEqualExcept([result], [{ id: 99, uuid: 1099, order: 99 }], ['updatedAt', 'onServerAt']);
           assertDeepEqualExcept(events, [
-            {"source":1,"action":"mutated","eventName":"created","record":{"id":99,"uuid":1099,"order":99,"updatedAt":"2020-10-29T07:29:03.533Z","onServerAt":0}},{"source":0,"action":"mutated","eventName":"created","record":{"id":99,"uuid":1099,"order":99}},
-            {"source":0,"action":"mutated","eventName":"created","record":{"id":99,"uuid":1099,"order":99}},
-            {"action":"remove-listeners"},
-            {"action":"add-listeners"}
+            {'source':1,'action':'mutated','eventName':'created','record':{'id':99,'uuid':1099,'order':99,'updatedAt':'2020-10-29T07:29:03.533Z','onServerAt':0}},{'source':0,'action':'mutated','eventName':'created','record':{'id':99,'uuid':1099,'order':99}},
+            {'source':0,'action':'mutated','eventName':'created','record':{'id':99,'uuid':1099,'order':99}},
+            {'action':'remove-listeners'},
+            {'action':'add-listeners'}
           ], ['updatedAt', 'onServerAt'], eventSort);
 
           assert.lengthOf(records, sampleLen + 1);
@@ -217,7 +216,7 @@ describe(`${desc} - optimistic mutation online`, () => {
             { source: 0, eventName: 'updated', action: 'mutated', record: { id: 0, uuid: 1000, order: 99 } },
             { source: 0, eventName: 'updated', action: 'mutated', record: { id: 0, uuid: 1000, order: 99 } },
             { action: 'remove-listeners' },
-            { action: 'add-listeners' },
+            { action: 'add-listeners' }
           ], ['updatedAt', 'onServerAt'], eventSort);
         });
     });
@@ -239,7 +238,7 @@ describe(`${desc} - optimistic mutation online`, () => {
             { source: 0, eventName: 'patched', action: 'mutated', record: { id: 1, uuid: 1001, order: 99 } },
             { source: 0, eventName: 'patched', action: 'mutated', record: { id: 1, uuid: 1001, order: 99 } },
             { action: 'remove-listeners' },
-            { action: 'add-listeners' },
+            { action: 'add-listeners' }
           ], ['updatedAt', 'onServerAt'], eventSort);
         });
     });
@@ -260,7 +259,7 @@ describe(`${desc} - optimistic mutation online`, () => {
             { source: 0, eventName: 'removed', action: 'remove', record: { id: 2, uuid: 1002, order: 2 } },
             { source: 0, eventName: 'removed', action: 'remove', record: { id: 2, uuid: 1002, order: 2 } },
             { action: 'remove-listeners' },
-            { action: 'add-listeners' },
+            { action: 'add-listeners' }
           ], ['updatedAt', 'onServerAt'], eventSort);
         });
     });
@@ -304,7 +303,7 @@ describe(`${desc} - optimistic mutation online`, () => {
             { source: 0, eventName: 'created', action: 'mutated', record: { id: 98, uuid: 1098, order: 98 } },
             { source: 0, eventName: 'created', action: 'mutated', record: { id: 99, uuid: 1099, order: 99 } },
             { action: 'remove-listeners' },
-            { action: 'add-listeners' },
+            { action: 'add-listeners' }
           ], ['updatedAt', 'onServerAt'], eventSort);
 
           assert.lengthOf(records, sampleLen + 2);
@@ -343,7 +342,7 @@ describe(`${desc} - optimistic mutation online`, () => {
             // { action: 'remove-listeners' },
             { source: 1, eventName: 'patched', action: 'mutated', record: { id: 3, uuid: 1003, order: 3, foo: 1 } },
             { source: 0, eventName: 'patched', action: 'mutated', record: { id: 1, uuid: 1001, order: 1, foo: 1 } },
-            { source: 0, eventName: 'patched', action: 'mutated', record: { id: 1, uuid: 1001, order: 1, foo: 1 } },
+            { source: 0, eventName: 'patched', action: 'mutated', record: { id: 1, uuid: 1001, order: 1, foo: 1 } }
             // { action: 'add-listeners' },
           ];
           const tmp = Object.assign([], evTable);
@@ -361,7 +360,7 @@ describe(`${desc} - optimistic mutation online`, () => {
             { source: 0, eventName: 'patched', action: 'mutated', record: { id: 2, uuid: 1002, order: 2, foo: 1 } },
             { source: 0, eventName: 'patched', action: 'mutated', record: { id: 3, uuid: 1003, order: 3, foo: 1 } },
             { action: 'remove-listeners' },
-            { action: 'add-listeners' },
+            { action: 'add-listeners' }
           ], ['updatedAt', 'onServerAt'], eventSort);
         });
     });
@@ -395,7 +394,7 @@ describe(`${desc} - optimistic mutation online`, () => {
             { source: 0, eventName: 'removed', action: 'remove', record: { id: 2, uuid: 1002, order: 2 } },
             { source: 0, eventName: 'removed', action: 'remove', record: { id: 3, uuid: 1003, order: 3 } },
             { action: 'remove-listeners' },
-            { action: 'add-listeners' },
+            { action: 'add-listeners' }
           ], ['updatedAt', 'onServerAt'], eventSort);
         });
     });
@@ -546,7 +545,7 @@ describe(`${desc} - optimistic mutation online`, () => {
           const records = await getRows(clientService.local);
 
           assertDeepEqualExcept(events, [
-            {"source":1,"action":"remove","eventName":"removed","record":{"id":2,"uuid":1002,"order":2}}
+            {'source':1,'action':'remove','eventName':'removed','record':{'id':2,'uuid':1002,'order':2}}
           ], ['updatedAt', 'onServerAt'], eventSort);
           assert.lengthOf(records, sampleLen - 1);
 
@@ -645,11 +644,11 @@ describe(`${desc} - optimistic mutation online`, () => {
 
   // Helpers
 
-  function clone(obj) {
+  function clone (obj) {
     return JSON.parse(JSON.stringify(obj));
   }
 
-  function delay(ms = 0) {
+  function delay (ms = 0) {
     return data => new Promise(resolve => {
       setTimeout(() => {
         resolve(data);
@@ -657,8 +656,8 @@ describe(`${desc} - optimistic mutation online`, () => {
     });
   }
 
-  function assertDeepEqualExcept(ds1, ds2, ignore, sort) {
-    function removeIgnore(ds) {
+  function assertDeepEqualExcept (ds1, ds2, ignore, sort) {
+    function removeIgnore (ds) {
       let dsc = clone(ds);
       dsc = omit(dsc, ignore);
       for (const i in dsc) {

@@ -25,18 +25,8 @@ This collection of packages i interesting due to to mainly two things:
 
 ## Complete Example
 
-Here's an example of a Feathers client that uses `feathersjs-offline`. 
+For a complete example please refer to `@feathersjs-offline/example`. Also, you might find it useful to have a look at the documentation in `@feathersjs-offline/server`, `@feathersjs-offline/owndata`, and `@feathersjs-offline/ownnet`.
 
-```js
-const feathers = require('@feathersjs/feathers');
-const plugin = require('@feathersjs-offline/owndata');
-
-// Initialize the application
-const app = feathers();
-
-// Initialize the plugin
-app.configure(plugin());
-```
 
 ## License
 

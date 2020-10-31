@@ -73,7 +73,7 @@ All options available for the wrapped adapter can be used in addition to:
 - `adapterTest` (optional, default `false`) - This is usually only used for running adapter tests as it suppresses results containing `uuid`, `updatedAt`, `deletedAt`, and `onServerAt`.
 
 ### Example
-Here is an example of a FeathersJS server with a messages in-memory service that supports pagination:
+Here is an example of a FeathersJS client with a messages in-memory service that supports pagination:
 
 ```bash
 $ npm install @feathersjs/feathers @feathersjs/express @feathersjs/socketio @feathersjs/errors feathers-memory @feathersjs-offline/owndata

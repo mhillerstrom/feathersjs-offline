@@ -31,7 +31,6 @@ describe('RealtimeServerWrapper', () => {
       service = app.service('people');
     });
 
-
     it('.create adds missing uuid, updatedAt, onServerAt, and deletedAt', () => {
       return service.create({ id: 99, order: 99 })
         .then(data => {
@@ -77,7 +76,6 @@ describe('RealtimeServerWrapper', () => {
         ddata = [];
       })
 
-
       it('all rows are created', () => {
         return delay()()
           .then(() => {
@@ -120,7 +118,6 @@ describe('RealtimeServerWrapper', () => {
           })
       });
 
-
       it('.find + _forceAll: true', () => {
         return service.find({ query: { offline: { _forceAll: true } } })
           .then(delay())
@@ -145,7 +142,6 @@ describe('RealtimeServerWrapper', () => {
           })
       });
 
-
       it('.find + _forceAll: true + onServerAt string', () => {
         return service.find({ query: { offline: { _forceAll: true, onServerAt } } })
           .then(delay())
@@ -161,7 +157,6 @@ describe('RealtimeServerWrapper', () => {
             }
           })
       });
-
 
       it('.find + _forceAll: true + onServerAt date', () => {
         onServerAt = new Date(onServerAt);
@@ -179,7 +174,6 @@ describe('RealtimeServerWrapper', () => {
             }
           })
       });
-
 
       it('.update + _forceAll: true (onServerAt > updatedAt)', () => {
         onServerAt = new Date(onServerAt);
@@ -200,7 +194,6 @@ describe('RealtimeServerWrapper', () => {
           })
       });
 
-
       it('.update + _forceAll: true', () => {
         onServerAt = new Date(onServerAt);
         let upd = Object.assign({}, ddata[0], {order: 91, updatedAt: new Date()});
@@ -219,7 +212,6 @@ describe('RealtimeServerWrapper', () => {
             }
           })
       });
-
 
       it('.update + _forceAll: true + params', () => {
         onServerAt = new Date(ddata[0].onServerAt);
@@ -240,7 +232,6 @@ describe('RealtimeServerWrapper', () => {
           })
       });
 
-
       it('.update + _forceAll: true + onServerAt', () => {
         onServerAt = new Date(onServerAt);
         let upd = Object.assign({}, ddata[0], {order: 93, updatedAt: new Date()});
@@ -259,7 +250,6 @@ describe('RealtimeServerWrapper', () => {
             }
           })
       });
-
 
       it('.patch + _forceAll: true', () => {
         onServerAt = new Date(onServerAt);
@@ -286,7 +276,6 @@ describe('RealtimeServerWrapper', () => {
           })
       });
 
-
       it('.patch + _forceAll: true + params', () => {
         onServerAt = new Date(onServerAt);
         return service.patch(null, {order: 95}, { query: { offline: { _forceAll: true}, onServerAt } })
@@ -303,7 +292,6 @@ describe('RealtimeServerWrapper', () => {
             }
           })
       });
-
 
       it('.patch + _forceAll: true + onServerAt', () => {
         onServerAt = new Date(onServerAt);
@@ -322,7 +310,6 @@ describe('RealtimeServerWrapper', () => {
           })
       });
 
-
       it('.remove + _forceAll: true', () => {
         return service.remove(5, { query: { offline: { _forceAll: true} } })
           .then(delay())
@@ -338,7 +325,6 @@ describe('RealtimeServerWrapper', () => {
             }
          })
       });
-
 
       it('.remove + _forceAll: true + params', () => {
         onServerAt = new Date(onServerAt);
@@ -356,7 +342,6 @@ describe('RealtimeServerWrapper', () => {
             }
          })
       });
-
 
       it('.remove + _forceAll: true + onServerAt', () => {
         onServerAt = new Date(onServerAt);
@@ -381,7 +366,7 @@ describe('RealtimeServerWrapper', () => {
 
   // Helpers
 
-  function delay(ms = 0) {
+  function delay (ms = 0) {
     return data => new Promise(resolve => {
       setTimeout(() => {
         resolve(data);

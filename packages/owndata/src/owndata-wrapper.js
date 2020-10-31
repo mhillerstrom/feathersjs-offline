@@ -133,7 +133,6 @@ class OwndataClass extends AdapterService {
     // Make sure we always select the key (id) in our results
     this._select = (params, ...others) => (res) => { return select(params, ...others, self.id)(res) }
 
-
     // Do we care about tracking the mutations in the old-fashioned way? (Let's us use the many test cases already in place)
     // Let's prepare the pub/sub system
     this._eventEmitter = new EventEmitter();
@@ -579,27 +578,27 @@ class OwndataClass extends AdapterService {
   // Necessary for adapterTests ^^^
 
   // Allow access to our internal services (for application hooks and the demo). Use with care!
-  get remote() {
+  get remote () {
     return this.remoteService;
   }
 
-  set remote(value) { // Do not allow reassign
+  set remote (value) { // Do not allow reassign
     throw new errors.Forbidden(`You cannot change value of remote!`);
   }
 
-  get local() {
+  get local () {
     return this.localService;
   }
 
-  set local(value) { // Do not allow reassign
+  set local (value) { // Do not allow reassign
     throw new errors.Forbidden(`You cannot change value of local!`);
   }
 
-  get queue() {
+  get queue () {
     return this.localQueue;
   }
 
-  set queue(value) { // Do not allow reassign
+  set queue (value) { // Do not allow reassign
     throw new errors.Forbidden(`You cannot change value of queue!`);
   }
 
@@ -902,7 +901,6 @@ function init (options) {
 
 let Owndata = init;
 
-
 /**
  * A owndataWrapper is a CLIENT adapter wrapping for FeathersJS services extending them to
  * implement the offline own-data principle (**LINK-TO-DOC**).
@@ -949,7 +947,6 @@ function owndataWrapper (app, path, options = {}) {
 module.exports = { init, Owndata, owndataWrapper };
 
 init.Service = OwndataClass;
-
 
 // --- Helper functions
 

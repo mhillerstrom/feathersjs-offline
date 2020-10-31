@@ -34,7 +34,7 @@
     "prepublish": "npm run compile",
     "compile": "shx rm -rf lib/ && tsc",
     "test": "npm run compile && npm run mocha",
-    "mocha": "mocha --config ../../.mocharc.ts.json --recursive test/**.test.ts test/**/*.test.ts test/**.test.js test/**/*.test.js"
+    "mocha": "rm -rf ./.scratch; nyc mocha --config ../../.mocharc.ts.json --recursive test/**.test.ts test/**/*.test.ts test/**.test.js test/**/*.test.js"
   },
   "directories": {
     "lib": "lib"
@@ -45,32 +45,32 @@
   "dependencies": {
     "@feathersjs-offline/common": "^0.0.1",
     "@feathersjs-offline/snapshot": "^0.0.1",
-    "@feathersjs/adapter-commons": "^4.5.2",
-    "@feathersjs/commons": "^4.5.8",
-    "component-emitter": "1.2.1",
-    "debug": "^4.1.1",
+    "@feathersjs/adapter-commons": "^4.5.7",
+    "@feathersjs/commons": "^4.5.9",
+    "component-emitter": "1.3.0",
+    "debug": "^4.2.0",
     "feathers-localstorage": "^5.1.1",
-    "feathers-mongoose": "^4.0.0",
+    "feathers-mongoose": "^8.3.1",
     "uberproto": "^2.0.6"
   },
   "devDependencies": {
     "@feathersjs-offline/server": "^0.0.1",
-    "@feathersjs/adapter-tests": "^4.5.2",
-    "@feathersjs/express": "^4.5.8",
-    "@feathersjs/feathers": "^4.5.8",
-    "@feathersjs/socketio": "^4.5.8",
-    "@feathersjs/socketio-client": "^4.5.8",
+    "@feathersjs/adapter-tests": "^4.5.4",
+    "@feathersjs/express": "^4.5.9",
+    "@feathersjs/feathers": "^4.5.9",
+    "@feathersjs/socketio": "^4.5.9",
+    "@feathersjs/socketio-client": "^4.5.9",
     "@types/debug": "^4.1.5",
     "@types/mocha": "^8.0.3",
-    "@types/node": "^14.6.2",
+    "@types/node": "^14.14.6",
     "@types/uuid": "^8.3.0",
     "chai": "^4.2.0",
     "feathers-hooks-common": "^5.0.4",
     "feathers-memory": "^4.1.0",
-    "mocha": "^8.1.3",
-    "shx": "^0.3.2",
+    "mocha": "^8.2.0",
+    "shx": "^0.3.3",
     "sift": "^13.3.5",
     "ts-node": "^9.0.0",
-    "typescript": "^4.0.2"
+    "typescript": "^4.0.5"
   }
 }

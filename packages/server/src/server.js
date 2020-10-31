@@ -231,7 +231,6 @@ function RealtimeServiceWrapper (cls = null) {
   return init;
 }
 
-
 module.exports = RealtimeServiceWrapper;
 
 // --- Helper functions
@@ -299,8 +298,8 @@ const fixParams = function (params) {
     }
 }
 
-  newParams['query'] = query;
-  if (paginate!=undefined) newParams['paginate'] = paginate;
+  newParams.query = query;
+  if (paginate!=undefined) newParams.paginate = paginate;
 
   return { newParams, offline: (offline != undefined ? offline : {})};
 }

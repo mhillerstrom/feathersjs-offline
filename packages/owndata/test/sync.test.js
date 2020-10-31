@@ -19,7 +19,6 @@ let app;
 let service;
 let ix = 0;
 
-
 const logAction = (type, action) => {
   return (msg, _ctx) => {
     console.log(`${type}: action=${action}, msg=${JSON.stringify(msg)}, _ctx.params=${JSON.stringify(_ctx.params)}, _ctx.query=${JSON.stringify(_ctx.query)}`);
