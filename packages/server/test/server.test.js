@@ -34,7 +34,6 @@ describe('RealtimeServerWrapper', () => {
     it('.create adds missing uuid, updatedAt, onServerAt, and deletedAt', () => {
       return service.create({ id: 99, order: 99 })
         .then(data => {
-          console.log(`First test: data = ${JSON.stringify(data)}`);
           expect(typeof data.uuid).to.equal('string', 'uuid was added');
           expect(typeof data.updatedAt).to.equal('string', 'updatedAt was added');
           expect(typeof data.onServerAt).to.equal('string', 'onServerAt was added');
@@ -60,14 +59,12 @@ describe('RealtimeServerWrapper', () => {
       beforeEach(async () => {
         cdata = await service.create(data);
         await delay(10)();
-        console.log(`cdata : ${JSON.stringify(cdata)}`);
         let tmp = await service.create(deleted);
         while (tmp.length) {
           let row = tmp.shift();
           ddata.push(await service.remove(row.id));
         }
         onServerAt = ddata[0].onServerAt;
-        console.log(`ddata : ${JSON.stringify(ddata)}`);
       })
 
       afterEach(async () => {
@@ -103,10 +100,11 @@ describe('RealtimeServerWrapper', () => {
       })
 
       it('.find + _forceAll: false', () => {
+        // Test to verify it is only the '_forceAll' key we are relying on - not its value
         return service.find({ query: { offline: { _forceAll: false } } })
           .then(delay())
           .then(sdata => {
-            expect(sdata.length).to.equal(data.length, `${sampleLen} rows found`);
+            expect(sdata.length).to.equal(data.length + deleted.length, `${2 * sampleLen} rows found`);
             for (let i = 0; i < sampleLen; i += 1) {
               expect(sdata[i].id).to.equal(data[i].id, `id is ok (i=${i})`);
               expect(sdata[i].uuid).to.equal(data[i].uuid, `uuid is ok (i=${i})`);
@@ -115,10 +113,19 @@ describe('RealtimeServerWrapper', () => {
               expect(sdata[i].onServerAt).to.not.equal(data[i].onServerAt, `onServerAt is updated (i=${i})`);
               expect(sdata[i].deletedAt).to.equal(data[i].deletedAt, `deletedAt is not updated (i=${i})`);
             }
+            for (let i = sampleLen; i < 2 * sampleLen; i += 1) {
+              expect(sdata[i].id).to.equal(deleted[i - sampleLen].id, `id is ok (i=${i})`);
+              expect(sdata[i].uuid).to.equal(deleted[i - sampleLen].uuid, `uuid is ok (i=${i})`);
+              expect(sdata[i].order).to.equal(deleted[i - sampleLen].order, `order is ok (i=${i})`);
+              expect(sdata[i].updatedAt).to.equal(deleted[i - sampleLen].updatedAt, `updatedAt is ok (i=${i})`);
+              expect(sdata[i].onServerAt).to.not.equal(deleted[i - sampleLen].onServerAt, `onServerAt is updated (i=${i})`);
+              expect(sdata[i].deletedAt).to.not.equal(undefined, `deletedAt is not undefined (i=${i})`);
+            }
           })
       });
 
       it('.find + _forceAll: true', () => {
+        // Test to verify it is only the '_forceAll' key we are relying on - not its value
         return service.find({ query: { offline: { _forceAll: true } } })
           .then(delay())
           .then(sdata => {
@@ -216,7 +223,7 @@ describe('RealtimeServerWrapper', () => {
       it('.update + _forceAll: true + params', () => {
         onServerAt = new Date(ddata[0].onServerAt);
         let newData = Object.assign({}, ddata[0], {order: 92, updatedAt: new Date()});
-        return service.update(5, newData, { query: { offline: { _forceAll: true}, onServerAt } })
+        return service.update(5, newData, { query: { offline: { _forceAll: true}, uuid: 1005 } })
           .then(delay())
           .then(sdata => {
             // We update data, as onServerAt in DB is older than updatedAt
@@ -321,7 +328,7 @@ describe('RealtimeServerWrapper', () => {
               expect(sdata.order).to.equal(ddata[i].order, `order is ok (i=${i})`);
               expect(sdata.updatedAt).to.equal(ddata[i].updatedAt, `updatedAt is ok (i=${i})`);
               expect(sdata.onServerAt).to.equal(ddata[i].onServerAt, `onServerAt is ok (i=${i})`);
-              expect(sdata.deletedAt).to.not.equal(ddata[i].deletedAt, `deletedAt is ok (i=${i})`);
+              expect(sdata.deletedAt).to.equal(ddata[i].deletedAt, `deletedAt is ok (i=${i})`);
             }
          })
       });
@@ -338,7 +345,7 @@ describe('RealtimeServerWrapper', () => {
               expect(sdata.order).to.equal(ddata[i].order, `order is ok (i=${i})`);
               expect(sdata.updatedAt).to.equal(ddata[i].updatedAt, `updatedAt is ok (i=${i})`);
               expect(sdata.onServerAt).to.equal(ddata[i].onServerAt, `onServerAt is ok (i=${i})`);
-              expect(sdata.deletedAt).to.not.equal(ddata[i].deletedAt, `deletedAt is ok (i=${i})`);
+              expect(sdata.deletedAt).to.equal(ddata[i].deletedAt, `deletedAt is ok (i=${i})`);
             }
          })
       });
@@ -355,7 +362,7 @@ describe('RealtimeServerWrapper', () => {
               expect(sdata.order).to.equal(ddata[i].order, `order is ok (i=${i})`);
               expect(sdata.updatedAt).to.equal(ddata[i].updatedAt, `updatedAt is ok (i=${i})`);
               expect(sdata.onServerAt).to.equal(ddata[i].onServerAt, `onServerAt is ok (i=${i})`);
-              expect(sdata.deletedAt).to.not.equal(ddata[i].deletedAt, `deletedAt is ok (i=${i})`);
+              expect(sdata.deletedAt).to.equal(ddata[i].deletedAt, `deletedAt is ok (i=${i})`);
             }
          })
       });

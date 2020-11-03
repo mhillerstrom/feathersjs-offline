@@ -3,7 +3,7 @@ const feathers = require('@feathersjs/feathers');
 const { sorter, select, AdapterService } = require('@feathersjs/adapter-commons');
 const memory = require('feathers-memory');
 const errors = require('@feathersjs/errors');
-const { owndataWrapper } = require('../lib');
+const { owndataWrapper } = require('../src');
 const _ = require('lodash');
 const { omit, remove } = _;
 
@@ -16,14 +16,14 @@ const serviceName = '/from';
 let app;
 let clientService;
 
-async function getRows (service) {
+async function getRows(service) {
   let gRows = null;
   gRows = await service.find({ query: { id: { $gte: 0 }, $sort: { order: 1 } } });
   return gRows;
 }
 
 /**
- * This sets up a before an error hook for all functions for a given service. The hook
+ * This sets up a before (and error) hook for all functions for a given service. The hook
  * can simulate e.g. backend failure, network connection troubles, or timeout by supplying
  * ```{query: {_fail:true}}``` to the call options.
  * If `_fail` is false or the query is not supplied all this hook is bypassed.
@@ -32,11 +32,11 @@ async function getRows (service) {
  * @param {string} service The service to be hooked into
  * @param {boolean} allowFail Will we allow the usage of _fail? (Default false)
  */
-function setUpHooks (type, serviceName, service, allowFail = false) {
+function setUpHooks(type, serviceName, service, allowFail = false) {
 
   service.hooks({
     before: {
-      all: [ async context => {
+      all: [async context => {
         if (verbose) {
           const data = context.data ? `\n\tdata\t${JSON.stringify(context.data)}` : '';
           const params = context.params ? `\n\tparams\t${JSON.stringify(context.params)}` : '';
@@ -47,27 +47,49 @@ function setUpHooks (type, serviceName, service, allowFail = false) {
             if (context.params.query._fail) { // Passing in param _fail simulates errors
               throw new errors.Timeout('Fail requested by user request - simulated timeout/missing connection');
             }
+            if (context.params.query._badFail) { // Passing in param _badFail simulates other error than timeout
+              throw new errors.GeneralError('Fail requested by user request - simulated general error');
+            }
           }
-          // In case _fail was supplied but not true and allowed - remove it before continuing
+          // In case _fail/_badFail was supplied but not true and allowed - remove it before continuing
           let newQuery = Object.assign({}, context.params.query);
           delete newQuery._fail;
+          delete newQuery._badFail;
           context.params.query = newQuery;
           return context;
         }
       }
-    ]}
-    // error: {
-    //   all: context => {
-    //     if (verbose) {
-    //       console.error(`Error.all.hook ${type}.${context.method} ERROR ${JSON.stringify(context.error)}`);
-    //     };
-    //     throw context.error;
-    //   }
-    // }
+      ]
+    }
   });
 }
 
-function setupServices () {
+/**
+ * This sets up a before hook for a given method in a given service. The hook
+ * will be triggered once and then it will be removed.
+ *
+ * @param {string} type Typically 'Remote' or 'Client'
+ * @param {string} service The service to be hooked into
+ * @param {string} service method to fail install hook for
+ */
+function failOnceHook(type, serviceName, service, method) {
+  let triggered = false;
+
+  service.hooks({
+    before: {
+      [method]: [async context => {
+        if (!triggered) {
+         triggered = true;
+          throw new errors.GeneralError('Fail requested by user request - simulated general error');
+        }
+        return context;
+      }
+      ]
+    }
+  });
+}
+
+function setupServices() {
   app = feathers();
 
   app.use(serviceName, memory({ multi: true }));
@@ -79,17 +101,17 @@ function setupServices () {
   return clientService;
 }
 
-describe(`${desc} - optimistic mutation online`, () => {
+describe(`${desc} - optimistic mutation`, () => {
   let data;
   let replicator;
-  let eventSort = sorter({action:1, source:-1, 'record.id':1, 'record.uuid':1/*, 'record.updatedAt':1*/});
+  let eventSort = sorter({ action: 1, source: -1, 'record.id': 1, 'record.uuid': 1/*, 'record.updatedAt':1*/ });
 
   beforeEach(() => {
     setupServices();
 
     const updatedAt = new Date();
     data = [];
-    for (let i = 0, len = sampleLen; i < len; i += 1) {
+    for (let i = 0, len = sampleLen; i < len; i++) {
       data.push({ id: i, uuid: 1000 + i, order: i, updatedAt });
     }
   });
@@ -136,8 +158,8 @@ describe(`${desc} - optimistic mutation online`, () => {
       events = [];
 
       return clientService.create(clone(data))
-      .then(delay())
-      .then(() => {
+        .then(delay())
+        .then(() => {
           clientService.on('events', (records, last) => {
             events[events.length] = last;
           });
@@ -181,10 +203,10 @@ describe(`${desc} - optimistic mutation online`, () => {
 
           assertDeepEqualExcept([result], [{ id: 99, uuid: 1099, order: 99 }], ['updatedAt', 'onServerAt']);
           assertDeepEqualExcept(events, [
-            {'source':1,'action':'mutated','eventName':'created','record':{'id':99,'uuid':1099,'order':99,'updatedAt':'2020-10-29T07:29:03.533Z','onServerAt':0}},{'source':0,'action':'mutated','eventName':'created','record':{'id':99,'uuid':1099,'order':99}},
-            {'source':0,'action':'mutated','eventName':'created','record':{'id':99,'uuid':1099,'order':99}},
-            {'action':'remove-listeners'},
-            {'action':'add-listeners'}
+            { 'source': 1, 'action': 'mutated', 'eventName': 'created', 'record': { 'id': 99, 'uuid': 1099, 'order': 99, 'updatedAt': '2020-10-29T07:29:03.533Z', 'onServerAt': 0 } }, { 'source': 0, 'action': 'mutated', 'eventName': 'created', 'record': { 'id': 99, 'uuid': 1099, 'order': 99 } },
+            { 'source': 0, 'action': 'mutated', 'eventName': 'created', 'record': { 'id': 99, 'uuid': 1099, 'order': 99 } },
+            { 'action': 'remove-listeners' },
+            { 'action': 'add-listeners' }
           ], ['updatedAt', 'onServerAt'], eventSort);
 
           assert.lengthOf(records, sampleLen + 1);
@@ -199,14 +221,31 @@ describe(`${desc} - optimistic mutation online`, () => {
         })
     });
 
-    it('update works', () => {
-      return clientService.update(0, { id: 0, uuid: 1000, order: 99 })
+    it('create adds missing updatedAt', () => {
+      return clientService.create({ id: 99, order: 99 })
+        .then(data => {
+          assert.isString(data.updatedAt);
+        })
+    });
+
+    it('create fails with duplicate uuid', async () => {
+      try {
+        await clientService.create({ id: 99, order: 99, uuid: 1000 })
+      } catch (error) {
+        assert.strictEqual(error.name, 'BadRequest');
+      }
+    });
+
+    it('update works - ignores onServerAt', () => {
+      const ts = new Date();
+      return clientService.update(0, { id: 0, uuid: 1000, order: 99, onServerAt: ts })
         .then(delay())
         .then(async result => {
           const records = await getRows(clientService.local);
-          data.splice(0, 1);
+          const record = data.splice(0, 1);
           data[data.length] = { id: 0, uuid: 1000, order: 99 };
 
+          assert.ok(record.onServerAt !== ts, 'onServerAt is preserved');
           assertDeepEqualExcept([result], [{ id: 0, uuid: 1000, order: 99 }], ['updatedAt', 'onServerAt']);
           assert.lengthOf(records, sampleLen);
           assertDeepEqualExcept(records, data, ['updatedAt', 'onServerAt']);
@@ -221,14 +260,16 @@ describe(`${desc} - optimistic mutation online`, () => {
         });
     });
 
-    it('patch works', () => {
-      return clientService.patch(1, { order: 99 })
+    it('patch works - ignores onServerAt', () => {
+      const ts = new Date();
+      return clientService.patch(1, { order: 99, onServerAt: ts })
         .then(delay())
         .then(async result => {
           const records = await getRows(clientService.local);
-          data.splice(1, 1);
+          const record = data.splice(1, 1);
           data[data.length] = { id: 1, uuid: 1001, order: 99 };
 
+          assert.ok(record.onServerAt !== ts, 'onServerAt is preserved');
           assertDeepEqualExcept([result], [{ id: 1, uuid: 1001, order: 99 }], ['updatedAt', 'onServerAt']);
           assert.lengthOf(records, sampleLen);
           assertDeepEqualExcept(records, data, ['updatedAt', 'onServerAt']);
@@ -272,7 +313,7 @@ describe(`${desc} - optimistic mutation online`, () => {
       events = [];
 
       return clientService.create(clone(data))
-       .then(() => {
+        .then(() => {
           clientService.on('events', (records, last) => {
             events[events.length] = last;
           });
@@ -281,9 +322,9 @@ describe(`${desc} - optimistic mutation online`, () => {
 
     it('create works', () => {
       return clientService.create([
-          { id: 98, uuid: 1098, order: 98 },
-          { id: 99, uuid: 1099, order: 99 }
-        ])
+        { id: 98, uuid: 1098, order: 98 },
+        { id: 99, uuid: 1099, order: 99 }
+      ])
         .then(delay())
         .then(async result => {
           const records = await getRows(clientService.local);
@@ -309,9 +350,9 @@ describe(`${desc} - optimistic mutation online`, () => {
           assert.lengthOf(records, sampleLen + 2);
           assertDeepEqualExcept(records, data, ['updatedAt', 'onServerAt']);
         })
-   });
+    });
 
-   it('patch works', () => {
+    it('patch works', () => {
       return clientService.patch(null, { foo: 1 }, { query: { order: { $gt: 0, $lt: 4 } } })
         .then(delay())
         .then(async result => {
@@ -406,8 +447,8 @@ describe(`${desc} - optimistic mutation online`, () => {
     beforeEach(() => {
       events = [];
       return clientService.create(clone(data))
-      .then(delay())
-       .then(() => {
+        .then(delay())
+        .then(() => {
           clientService.on('events', (records, last) => {
             events[events.length] = last;
           });
@@ -415,9 +456,9 @@ describe(`${desc} - optimistic mutation online`, () => {
     });
 
     it('get succeeds correctly', () => {
-      return clientService.get(0, {query:{_fail: true}})
+      return clientService.get(0, { query: { _fail: true } })
         .then(res => {
-          assert(res.id == 0, 'Succeeded as expected');
+          assert(res.id === 0, 'Succeeded as expected');
         })
         .catch(err => {
           expect(err.className).to.equal('not-found', 'Invalid id throws NotFound');
@@ -425,8 +466,8 @@ describe(`${desc} - optimistic mutation online`, () => {
         })
     });
 
-    it('get fails correctly', () => {
-      return clientService.get(9999, {query:{_fail: true}})
+    it('get fails correctly - unknown id', () => {
+      return clientService.get(9999, { query: { _fail: true } })
         .then(() => {
           assert(false, 'Unexpectedly succeeded');
         })
@@ -545,7 +586,7 @@ describe(`${desc} - optimistic mutation online`, () => {
           const records = await getRows(clientService.local);
 
           assertDeepEqualExcept(events, [
-            {'source':1,'action':'remove','eventName':'removed','record':{'id':2,'uuid':1002,'order':2}}
+            { 'source': 1, 'action': 'remove', 'eventName': 'removed', 'record': { 'id': 2, 'uuid': 1002, 'order': 2 } }
           ], ['updatedAt', 'onServerAt'], eventSort);
           assert.lengthOf(records, sampleLen - 1);
 
@@ -577,7 +618,295 @@ describe(`${desc} - optimistic mutation online`, () => {
           assertDeepEqualExcept(fromRows, clientRows, ['updatedAt', 'onServerAt']);
         })
     });
-});
+  });
+
+  describe('without publication & remote error (not timeout)', () => {
+    let events;
+
+    beforeEach(() => {
+      events = [];
+      return clientService.create(clone(data))
+        .then(delay())
+        .then(() => {
+          clientService.on('events', (records, last) => {
+            events[events.length] = last;
+          });
+        });
+    });
+
+    it('get succeeds correctly', () => {
+      return clientService.get(0, { query: { _badFail: true } })
+        .then(res => {
+          assert(res.id === 0, 'Succeeded as expected');
+        })
+        .catch(err => {
+          expect(err.className).to.equal('not-found', 'Invalid id throws NotFound');
+          assert(false, 'Unexpectedly failed');
+        })
+    });
+
+    it('get fails correctly - unknown id', () => {
+      return clientService.get(9999, { query: { _badFail: true } })
+        .then(() => {
+          assert(false, 'Unexpectedly succeeded');
+        })
+        .catch(err => {
+          expect(err.className).to.equal('not-found', 'Invalid id throws NotFound');
+        })
+    });
+
+    it('create works and sync recovers', async () => {
+      let beforeRows = null;
+      let afterRows = null;
+
+      return getRows(clientService)
+        .then(rows => { beforeRows = rows; })
+        .then(clientService.create({ id: 99, uuid: 1099, order: 99 }, { query: { _badFail: true } })
+          .catch(error => {
+            expect(true).to.equal(false, `This should not happen! Received error '${error.name}'`);
+          })
+        )
+        .then(delay())
+        // Current client side store status
+        .then(() => getRows(clientService))
+        .then(rows => { afterRows = rows; })
+        .then(() => {
+          assert.lengthOf(beforeRows, sampleLen);
+          assert.lengthOf(afterRows, sampleLen);
+          assertDeepEqualExcept(beforeRows, afterRows, ['updatedAt', 'onServerAt']);
+
+          assertDeepEqualExcept(events, [
+            { "source": 1, "action": "mutated", "eventName": "created", "record": { "id": 99, "uuid": 1099, "order": 99 } },
+            { "source": 2, "action": "remove", "eventName": "removed", "record": { "id": 99, "uuid": 1099, "order": 99 } }
+          ], ['updatedAt', 'onServerAt']);
+        })
+        .then(delay())
+        .then(() => clientService.sync())
+        .then(delay())
+        // See changes after synchronization
+        .then(() => getRows(clientService.remote))
+        .then(delay())
+        .then(afterRows => {
+          // Make sure remote data has not changed...
+          assert.lengthOf(afterRows, sampleLen);
+          assertDeepEqualExcept(afterRows, beforeRows, ['updatedAt', 'onServerAt']);
+        })
+    });
+
+    it('update works and sync recovers', () => {
+      let beforeRows = null;
+      let afterRows = null;
+
+      return getRows(clientService)
+        .then(rows => { beforeRows = rows; })
+        .then(clientService.update(0, { id: 0, uuid: 1000, order: 99 }, { query: { _badFail: true } })
+          .catch(error => {
+            expect(true).to.equal(false, `This should not happen! Received error '${error.name}'`);
+          })
+        )
+        .then(delay())
+        .then(() => getRows(clientService))
+        .then(rows => { afterRows = rows; })
+        .then(() => {
+          assert.lengthOf(beforeRows, sampleLen);
+          assert.lengthOf(afterRows, sampleLen);
+          assertDeepEqualExcept(beforeRows, afterRows, ['updatedAt', 'onServerAt']);
+
+          assertDeepEqualExcept(events, [
+            { "source": 1, "action": "mutated", "eventName": "updated", "record": { "id": 0, "uuid": 1000, "order": 99 } },
+            { "source": 2, "action": "mutated", "eventName": "updated", "record": { "id": 0, "uuid": 1000, "order": 99 } }
+          ], ['updatedAt', 'onServerAt'], eventSort);
+        })
+        .then(delay())
+        .then(() => clientService.sync())
+        .then(delay())
+        // See changes after synchronization
+        .then(() => getRows(clientService.remote))
+        .then(delay())
+        .then(afterRows => {
+          // Make sure remote data has not changed...
+          assert.lengthOf(afterRows, sampleLen);
+          assertDeepEqualExcept(afterRows, beforeRows, ['updatedAt', 'onServerAt']);
+        })
+    })
+
+    it('patch works and sync recovers', () => {
+      let beforeRows = null;
+      let afterRows = null;
+
+      return getRows(clientService)
+        .then(rows => { beforeRows = rows; })
+        .then(clientService.patch(1, { order: 99 }, { query: { _badFail: true } })
+          .catch(error => {
+            expect(true).to.equal(false, `This should not happen! Received error '${error.name}'`);
+          })
+        )
+        .then(delay())
+        // Current client side store status
+        .then(delay())
+        .then(() => getRows(clientService))
+        .then(rows => { afterRows = rows; })
+        .then(() => {
+          assert.lengthOf(beforeRows, sampleLen);
+          assert.lengthOf(afterRows, sampleLen);
+          assertDeepEqualExcept(beforeRows, afterRows, ['updatedAt', 'onServerAt']);
+
+          assertDeepEqualExcept(events, [
+            { "source": 1, "action": "mutated", "eventName": "patched", "record": { "id": 1, "uuid": 1001, "order": 99 } },
+            { "source": 2, "action": "mutated", "eventName": "updated", "record": { "id": 1, "uuid": 1001, "order": 99 } }
+          ], ['updatedAt', 'onServerAt'], eventSort);
+        })
+        .then(delay())
+        .then(() => clientService.sync())
+        .then(delay())
+        // See changes after synchronization
+        .then(() => getRows(clientService.remote))
+        .then(delay())
+        .then(afterRows => {
+          // Make sure remote data has not changed...
+          assert.lengthOf(afterRows, sampleLen);
+          assertDeepEqualExcept(afterRows, beforeRows, ['updatedAt', 'onServerAt']);
+        })
+    });
+
+    it('remove works and sync recovers', () => {
+      let beforeRows = null;
+      let afterRows = null;
+
+      return getRows(clientService)
+        .then(rows => { beforeRows = rows; })
+        .then(clientService.remove(2, { query: { _badFail: true } })
+          .catch(error => {
+            expect(true).to.equal(false, `This should not happen! Received error '${error.name}'`);
+          })
+        )
+        .then(delay())
+        // Current client side store status
+        .then(delay())
+        .then(() => getRows(clientService))
+        .then(rows => { afterRows = rows; })
+        .then(() => {
+          assert.lengthOf(beforeRows, sampleLen);
+          assert.lengthOf(afterRows, sampleLen - 1);
+
+          assertDeepEqualExcept(events, [
+            { 'source': 1, 'action': 'remove', 'eventName': 'removed', 'record': { 'id': 2, 'uuid': 1002, 'order': 2 } }
+          ], ['updatedAt', 'onServerAt'], eventSort);
+        })
+        .then(delay())
+        .then(() => clientService.sync())
+        .then(delay())
+        // See changes after synchronization
+        .then(() => getRows(clientService.remote))
+        .then(delay())
+        .then(afterRows => {
+          // Make sure remote data has not changed but client-side has...
+          assert.lengthOf(afterRows, sampleLen);
+          assertDeepEqualExcept(afterRows, beforeRows, ['updatedAt', 'onServerAt']);
+        })
+    });
+  });
+
+  describe('Client side fails', () => {
+
+    beforeEach(async () => {
+      clientService = setupServices();
+      await clientService.create(clone(data));
+    });
+
+    it('Create fails, data preserved', async () => {
+      let beforeRows = null;
+      let afterRows = null;
+
+      failOnceHook('CLIENT-local', serviceName, clientService.local, 'create');
+
+      return getRows(clientService)
+        .then(rows => { beforeRows = rows; })
+        .then(clientService.create({ id: 99, uuid: 1099, order: 99 })
+          .catch(error => {
+            expect(error.name).to.equal('GeneralError', `We expect a 'GeneralError' but got '${error.name}'`);
+          })
+        )
+        .then(delay())
+        .then(() => getRows(clientService.local))
+        .then(rows => { afterRows = rows; })
+        .then(() => {
+          assert.lengthOf(beforeRows, sampleLen);
+          assert.lengthOf(afterRows, sampleLen);
+          assertDeepEqualExcept(beforeRows, afterRows, ['updatedAt', 'onServerAt'], eventSort);
+        })
+    });
+
+    it('Update fails, data preserved', () => {
+      let beforeRows = null;
+      let afterRows = null;
+
+      failOnceHook('CLIENT-local', serviceName, clientService.local, 'update');
+
+      return getRows(clientService)
+        .then(rows => { beforeRows = rows; })
+        .then(clientService.update(1, { id: 1, uuid: 1001, order: 1001 })
+          .catch(error => {
+            expect(error.name).to.equal('GeneralError', `We expect a 'GeneralError' but got '${error.name}'`);
+          })
+        )
+        .then(delay())
+        .then(() => getRows(clientService.local))
+        .then(rows => { afterRows = rows; })
+        .then(() => {
+          assert.lengthOf(beforeRows, sampleLen);
+          assert.lengthOf(afterRows, sampleLen);
+          assertDeepEqualExcept(beforeRows, afterRows, ['updatedAt', 'onServerAt'], eventSort);
+        })
+    });
+
+    it('Patch fails, data preserved', async () => {
+      let beforeRows = null;
+      let afterRows = null;
+
+      await delay(50)(); // Let things settle - we use patch internally to consolidate results returned from remote
+      failOnceHook('CLIENT-local', serviceName, clientService.local, 'patch');
+
+      return getRows(clientService.local)
+        .then(rows => { beforeRows = rows; })
+        .then(() => clientService.patch(2, { order: 1002 })
+          .catch(error => {
+            expect(error.name).to.equal('GeneralError', `We expect a 'GeneralError' but got '${error.name}'`);
+          })
+        )
+        .then(delay())
+        .then(() => getRows(clientService.local))
+        .then(rows => { afterRows = rows; })
+        .then(() => {
+          assert.lengthOf(beforeRows, sampleLen);
+          assert.lengthOf(afterRows, sampleLen);
+          assertDeepEqualExcept(beforeRows, afterRows, ['updatedAt', 'onServerAt'], eventSort);
+        })
+    });
+
+    it('Remove fails, data preserved', () => {
+      let beforeRows = null;
+      let afterRows = null;
+
+      failOnceHook('CLIENT-local', serviceName, clientService.local, 'remove');
+
+      return getRows(clientService)
+        .then(rows => { beforeRows = rows; })
+        .then(clientService.remove(3)
+          .catch(error => {
+            expect(error.name).to.equal('GeneralError', `We expect a 'GeneralError' but got '${error.name}'`);
+          })
+        )
+        .then(delay())
+        .then(() => getRows(clientService.local))
+        .then(rows => { afterRows = rows; })
+        .then(() => {
+          assert.lengthOf(beforeRows, sampleLen);
+          assert.lengthOf(afterRows, sampleLen);
+          assertDeepEqualExcept(beforeRows, afterRows, ['updatedAt', 'onServerAt'], eventSort);
+        })
+    });
+  });
 
   describe('test of sync', () => {
     let events;
@@ -585,13 +914,13 @@ describe(`${desc} - optimistic mutation online`, () => {
     beforeEach(() => {
       events = [];
       return clientService.create(clone(data))
-      .then(delay())
-      .then(() => {
+        .then(delay())
+        .then(() => {
           clientService.on('events', (records, last) => {
             events[events.length] = last;
           });
         });
-      });
+    });
 
     it('sync all', () => {
       let clientRows = null;
@@ -642,41 +971,41 @@ describe(`${desc} - optimistic mutation online`, () => {
   });
 });
 
-  // Helpers
+// Helpers
 
-  function clone (obj) {
-    return JSON.parse(JSON.stringify(obj));
-  }
+function clone(obj) {
+  return JSON.parse(JSON.stringify(obj));
+}
 
-  function delay (ms = 0) {
-    return data => new Promise(resolve => {
-      setTimeout(() => {
-        resolve(data);
-      }, ms);
-    });
-  }
+function delay(ms = 0) {
+  return data => new Promise(resolve => {
+    setTimeout(() => {
+      resolve(data);
+    }, ms);
+  });
+}
 
-  function assertDeepEqualExcept (ds1, ds2, ignore, sort) {
-    function removeIgnore (ds) {
-      let dsc = clone(ds);
-      dsc = omit(dsc, ignore);
-      for (const i in dsc) {
-        if (typeof dsc[i] === 'object') {
-          dsc[i] = removeIgnore(dsc[i]);
-        }
+function assertDeepEqualExcept(ds1, ds2, ignore, sort) {
+  function removeIgnore(ds) {
+    let dsc = clone(ds);
+    dsc = omit(dsc, ignore);
+    for (const i in dsc) {
+      if (typeof dsc[i] === 'object') {
+        dsc[i] = removeIgnore(dsc[i]);
       }
-      return dsc;
     }
-
-    assert.isArray(ds1);
-    assert.isArray(ds2);
-    assert.isArray(ignore);
-    assert.equal(ds1.length, ds2.length);
-    ds1 = ds1.sort(sort);
-    ds2 = ds2.sort(sort);
-    for (let i = 0; i < ds1.length; i++) {
-      const dsi1 = removeIgnore(ds1[i]);
-      const dsi2 = removeIgnore(ds2[i]);
-      assert.deepEqual(dsi1, dsi2);
-    }
+    return dsc;
   }
+
+  assert.isArray(ds1);
+  assert.isArray(ds2);
+  assert.isArray(ignore);
+  assert.equal(ds1.length, ds2.length);
+  ds1 = ds1.sort(sort);
+  ds2 = ds2.sort(sort);
+  for (let i = 0; i < ds1.length; i++) {
+    const dsi1 = removeIgnore(ds1[i]);
+    const dsi2 = removeIgnore(ds2[i]);
+    assert.deepEqual(dsi1, dsi2);
+  }
+}

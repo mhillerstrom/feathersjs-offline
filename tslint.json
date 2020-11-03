@@ -12,6 +12,7 @@
       "packages/server/lib/**",
       "packages/snapshot/lib/**",
       "packages/example/lib/**",
+      "packages/example/public/**",
       "**/node_modules/**",
       "**/coverage/**",
       "**/dist/**",

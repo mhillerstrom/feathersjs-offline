@@ -60,12 +60,14 @@ const attrStrip = (...attr) => {
 }
 
 class OwndataClass extends AdapterService {
-  constructor (options = {}) {
-    let opts = Object.assign({}, defaultOptions, options);
-    debug(`Constructor started, opts = ${JSON.stringify(opts)}`);
-    super(opts);
-    this.wOptions = opts;
-    debug(`Constructor ended, options = ${JSON.stringify(this.wOptions)}`);
+  constructor (opts = {}) {
+    let newOpts = Object.assign({}, defaultOptions, opts);
+
+    debug(`Constructor started, newOpts = ${JSON.stringify(newOpts)}, publication = ${newOpts.publication===null?'null':newOpts.publication.toString()}, subscriber = ${newOpts.subscriber===null?'null':newOpts.subscriber.toString()}`);
+    super(newOpts);
+
+    this.wrapperOptions = Object.assign({}, newOpts, this.options);
+    debug(`Constructor ended, options = ${JSON.stringify(this.options)}, publication = ${this.options.publication===null?'null':this.options.publication.toString()}, subscriber = ${this.options.subscriber===null?'null':this.options.subscriber.toString()}`);
 
     this.type = 'own-data';
 
@@ -80,6 +82,8 @@ class OwndataClass extends AdapterService {
     }
     this._setup = true;
 
+    this.options = this.wrapperOptions;
+
     let self = this;
     this.thisName = this.options.fixedName ? this.options.fixedName : `${this.type}_offline_${nameIx++}_${path}`;
 
@@ -87,9 +91,6 @@ class OwndataClass extends AdapterService {
     let old = app.services[path];
     this.remoteService = old || app.service(path); // We want to get the default service (redirects to server or points to a local service)
     app.services[path] = self;  // Install this service instance
-// TODO: necessary??? vvvvv
-    if (typeof this.remoteService._setup === 'function')
-      this.remoteService._setup(app, path);
 
     // Get the service name and standard settings
     this.name = path;
@@ -98,10 +99,10 @@ class OwndataClass extends AdapterService {
     this.localServiceName = this.thisName + '_local';
     this.localServiceQueue = this.thisName + '_queue';
 
-    this.storage = this.wOptions.storage ? this.wOptions.storage : localStorage;
-    this.localSpecOptions = { name: this.localServiceName, storage: this.storage, store: this.wOptions.store };
+    this.storage = this.options.storage ? this.options.storage : localStorage;
+    this.localSpecOptions = { name: this.localServiceName, storage: this.storage, store: this.options.store };
     let localOptions = Object.assign({}, this.options, this.localSpecOptions);
-    let queueOptions = { id: 'id', name: this.localServiceQueue, storage: this.storage, paginate: null, multi: true, reuseKeys: this.wOptions.reuseKeys };
+    let queueOptions = { id: 'id', name: this.localServiceQueue, storage: this.storage, paginate: null, multi: true, reuseKeys: this.options.reuseKeys };
 
     debug(`  Setting up services '${this.localServiceName}' and '${this.localServiceQueue}'...`);
     app
@@ -115,8 +116,11 @@ class OwndataClass extends AdapterService {
     //    (one of the quirks of feathers-localstorage)
     await this.localService.ready();
 
+    // The initialization/setup of the localService adapter screws-up our options object
+    this.options = this.wrapperOptions;
+
     // Are we running adapterTests?
-    if (this.wOptions.adapterTest) {
+    if (this.options.adapterTest) {
       debug('  Setting up for adapter tests...');
       // Make sure the '_adapterTestStrip' attributes are stripped from results
       // However, we need to allow for having uuid as key
@@ -137,16 +141,16 @@ class OwndataClass extends AdapterService {
     // Let's prepare the pub/sub system
     this._eventEmitter = new EventEmitter();
 
-    this._publication = this.wOptions.publication;
+    this._publication = this.options.publication;
     if (this._publication && typeof this._publication !== 'function')
-      throw new Error.BadRequest(`option 'publication' must be a function or 'null'!`);
+        throw new errors.BadRequest(`option 'publication' must be a function or 'null'!`);
 
-      this._subscriber = this.wOptions.subscriber;
+    this._subscriber = this.options.subscriber;
     if (typeof this._subscriber !== 'function')
-      throw new Error.BadRequest(`option 'subscriber' must be a function!`);
+      throw new errors.BadRequest(`option 'subscriber' must be a function!`);
 
-    if (this.wOptions.trackMutations) {
-      this._mutateStore = new MutateStore({ publication: this._publication, subscriber: this._subscriber, emit: this._eventEmitter.emit.bind(this), id: this.id });
+    if (this.options.trackMutations) {
+      this._mutateStore = new MutateStore({ publication: this._publication, subscriber: this._subscriber, emitter: this._eventEmitter.emit.bind(this), id: this.id });
     }
     else {
       this._mutateStore = { mutate: (event, data, params) => { return data }, publication: null, subscriber: () => { } };
@@ -193,7 +197,7 @@ class OwndataClass extends AdapterService {
     this.options = observe(Object.assign(
       {},
       this.remoteService.options ? this.remoteService.options : {},
-      self.wOptions
+      self.options
     ));
     watcher(() => {
       // Update all changes to 'this.options' in both localService and remoteService
@@ -298,18 +302,17 @@ class OwndataClass extends AdapterService {
           await self._processQueuedEvents();
         })
         .catch(async rerr => {
-          if (rerr.name === 'Timeout' && rerr.type === 'FeathersError') {
-            // Let's silently ignore missing connection to server
-            // We'll catch-up next time we get a connection
-          }
-          else {
+          if (!(rerr.name === 'Timeout' && rerr.type === 'FeathersError')) {
+            // Let's silently ignore missing connection to server -
+            // we'll catch-up next time we get a connection
+            // In all other cases do the following:
             self._mutateStore.mutate('removed', newData, 2);
             await self._removeQueuedEvent('create', queueId, newData, newData.updatedAt);
             await self.localService.remove(res[self.id], params);
-            throw rerr;
           }
+
           self.allowInternalProcessing();
-        });
+       });
     }
     else {
       await this._removeQueuedEvent('create', queueId, newData, newData.updatedAt);
@@ -436,7 +439,7 @@ class OwndataClass extends AdapterService {
       this.remoteService.patch(id, res, shallowClone(params))
         .then(async rres => {
           self._mutateStore.mutate('patched', rres, 0);
-          await self._removeQueuedEvent('patch', queueId, {no:1}/*newData*/, res.updatedAt);
+          await self._removeQueuedEvent('patch', queueId, newData, res.updatedAt);
           await self.localService.patch(id, rres, shallowClone(params))
             .catch(async err => {
               // We have to test for a possible race condition
@@ -459,14 +462,14 @@ class OwndataClass extends AdapterService {
           } else {
             debug(`_patch ERROR: ${rerr.name}, ${rerr.message}`);
             self._mutateStore.mutate('updated', afterRecord, 2);
-            await self._removeQueuedEvent('patch', queueId, {no:2}/*newData*/, res.updatedAt);
+            await self._removeQueuedEvent('patch', queueId, newData, res.updatedAt);
             await self.localService.patch(id, beforeRecord);
           }
           self.allowInternalProcessing();
         });
     }
     else {
-      await this._removeQueuedEvent('patch', queueId, {no:3}/*newData*/, newData.updatedAt);
+      await this._removeQueuedEvent('patch', queueId, newData, newData.updatedAt);
       this.allowInternalProcessing();
       throw err;
     }
@@ -645,7 +648,7 @@ class OwndataClass extends AdapterService {
     if (!err) {
       debug(`removeQueuedEvent removed: ${JSON.stringify(res)}`);
     } else {
-      console.log(`*** ERROR: _removedQueuedEvent: id=${id} eventName='${eventName}', localRecord=${JSON.stringify(localRecord)}`);
+      console.log(`*** ERROR: _removedQueuedEvent: id=${id} eventName='${eventName}', localRecord=${JSON.stringify(localRecord)}, err.name =${err.name}, err.message=${err.message}`);
     }
   }
 

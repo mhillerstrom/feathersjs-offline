@@ -5,7 +5,6 @@ import makeDebug from 'debug';
 const debug = makeDebug('@feathersjs-offline/snapshot');
 
 function snapshot (service, baseQuery) {
-  const debug = (...args) => {console.log(...args)};
   debug(`snapshot start: ${JSON.stringify(baseQuery)}`);
 
   const query = Object.assign({}, { $skip: 0, $limit: 200 }, baseQuery); // use max recs configured

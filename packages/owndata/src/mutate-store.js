@@ -1,6 +1,8 @@
+const errors =  require('@feathersjs/errors');
 const debug = require('debug')('@feathersjs-offline:owndata:mutate-store');
 
 const defOptions = {
+  id: 'id',
   sort: (a, b) => {return a - b},
   publication: null,
   subscriber: () => {},
@@ -9,35 +11,35 @@ const defOptions = {
 
 class MutateStore {
   constructor (opt = defOptions) {
-    let options = Object.assign({}, opt, defOptions);
+    let options = Object.assign({}, defOptions, opt);
     debug(`******  options = ${JSON.stringify(options)}`);
     this.store = {
       records: [],
       last: {}
     };
 
-    this._sorter = options.sort;
-    if (!options.emit)
-      throw new Error(`No emitter set for MutateStore`);
+    // this._sorter = options.sort;
+    if (!options.emitter)
+      throw new errors.BadRequest(`No emitter set for MutateStore`);
 
-    this.emit = options.emit;
+    this.emit = options.emitter;
 
     this._publication = options.publication;
     this._subscriber = options.subscriber;
+    this._sorter = options.sort;
 
     this._id = options.id;
   }
 
   mutate (eventName, remoteRecord, source) {
     debug(`mutate started: '${eventName}', remoteRecord ${JSON.stringify(remoteRecord)}, source=${source}`);
-    const that = this;
+    const self = this;
 
     const idName = this._id;
     const store = this.store;
     const records = store.records;
     let beforeRecord = null;
 
-    debug(`  _findIndex(${JSON.stringify(records)}), remoteRecord[${idName}] = ${remoteRecord[idName]}`)
     const index = this._findIndex(records, record => {return record[idName] === remoteRecord[idName]});
 
     if (index > -1) {
@@ -57,7 +59,7 @@ class MutateStore {
     }
 
     if (this._publication && !this._publication(remoteRecord)) {
-      return index > -1 ? broadcast('left-pub') : undefined;
+      return index > -1 ? broadcast('left-pub') : remoteRecord;
     }
 
     records[records.length] = remoteRecord;
@@ -66,29 +68,30 @@ class MutateStore {
       records.sort(this._sorter);
     }
 
-    broadcast('mutated');
+    return broadcast('mutated');
 
-    return remoteRecord;
 
     function broadcast (action) {
       debug(`emitted ${index} ${eventName} ${action}`);
       store.last = { source, action, eventName, record: remoteRecord };
 
-      that.emit('events', records, store.last);
-      that._subscriber(records, store.last);
+      self.emit('events', records, store.last);
+      self._subscriber(records, store.last);
+
+      return remoteRecord;
     }
   }
 
-  changeSort (sort) {
-    this._sorter = sort;
+  // changeSort (sort) {
+  //   this._sorter = sort;
 
-    if (this._sorter) {
-      this.store.records.sort(this._sorter);
-    }
+  //   if (this._sorter) {
+  //     this.store.records.sort(this._sorter);
+  //   }
 
-    this.emit('events', this.store.records, { action: 'change-sort' });
-    this._subscriber(this.store.records, { action: 'change-sort' });
-  }
+  //   this.emit('events', this.store.records, { action: 'change-sort' });
+  //   this._subscriber(this.store.records, { action: 'change-sort' });
+  // }
 
   _findIndex (array, predicate = () => true, fromIndex = 0) {
     for (let i = fromIndex, len = array.length; i < len; i++) {

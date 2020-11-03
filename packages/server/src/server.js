@@ -208,7 +208,7 @@ function RealtimeServiceWrapper (cls = null) {
 
       ts = ts || new Date();
 
-      if (offline && '_force' in offline) {
+      if (offline && '_forceAll' in offline) {
         return super._remove(id, newParams)
           .then(this._strip)
           .catch(err => {throw err});
@@ -244,7 +244,6 @@ function shallowClone (obj) {
   return Object.assign({}, obj);
 };
 
-const _internalAlwaysSelect = ['uuid', 'updatedAt', 'onServerAt'];
 const _adapterTestStrip = ['uuid', 'updatedAt', 'onServerAt', 'deletedAt'];
 
 const attrStrip = (...attr) => {
@@ -277,7 +276,7 @@ const fixParams = function (params) {
   if (offline) {
     delete query.offline;
 
-    if ('_forceAll' in offline && offline._forceAll) {
+    if ('_forceAll' in offline) {
       delete query.deletedAt
       if ('onServerAt' in offline) {
         if (typeof offline.onServerAt === 'string')
@@ -291,15 +290,15 @@ const fixParams = function (params) {
     }
   }
   else {
-    if (query && query != {}) {
+    if (query && query !== {}) {
         query = Object.assign(query, {'deletedAt': null});
     } else {
       query = {'deletedAt': null};
     }
-}
+  }
 
   newParams.query = query;
-  if (paginate!=undefined) newParams.paginate = paginate;
+  if (paginate!==undefined) newParams.paginate = paginate;
 
-  return { newParams, offline: (offline != undefined ? offline : {})};
-}
+  return { newParams, offline: (offline !== undefined ? offline : {})};
+};
