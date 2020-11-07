@@ -19,24 +19,6 @@ let app;
 let service;
 let ix = 0;
 
-function newServicePath () {
-  return '/tmp' /* + ix++ */;
-}
-
-function services1 (path) {
-  fromServiceNonPaginatedConfig(path);
-}
-
-function services2 (path) {
-  app.configure(OwnnetWrapper(path, memory, { multi: true }));
-  return app.service(path);
-}
-
-function fromServiceNonPaginatedConfig (path) {
-  app.configure(OwnnetWrapper(path, memory, { multi: true }));
-  return app.service(path);
-}
-
 const logAction = (type, action) => {
   return (msg, _ctx) => {
     console.log(`${type}: action=${action}, msg=${JSON.stringify(msg)}, _ctx.params=${JSON.stringify(_ctx.params)}, _ctx.query=${JSON.stringify(_ctx.query)}`);

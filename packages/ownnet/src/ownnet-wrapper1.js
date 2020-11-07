@@ -1,14 +1,15 @@
 import { stripSlashes } from '@feathersjs/commons';
 import errors from '@feathersjs/errors';
 import { to } from '@feathersjs-offline/common';
-import OwnClass from '../../owndata/src/own-class';
+import { Owndata } from '../../owndata/src';
 
 const debug = require('debug')('@feathersjs-offline:ownnet:service-wrapper');
 
-class OwnnetClass extends OwnClass {
+class OwnnetClass extends Owndata.Service {
   constructor (options = {}) {
     debug(`Constructor started, opts = ${JSON.stringify(options)}`);
     super(options);
+    debug(`Constructor ended, options = ${JSON.stringify(this.options)}`);
 
     this.type = 'own-net';
 
@@ -26,9 +27,10 @@ class OwnnetClass extends OwnClass {
 
     let [err, store] = await to(this.localQueue.getEntries({query:{$sort: {uuid: 1, updatedAt: 1}}}));
     if (!(store && store !== {})) {
-      this.pQActive = false;
-      return true;
+      return;
     }
+
+    console.log(`store = ${JSON.stringify(store)}\nstore.length = ${store.length}`);
 
     this.removeListeners();
 
@@ -127,46 +129,46 @@ console.log(`>>> ${mdebug}`);
                 console.log(`qres=${JSON.stringify(qres)}`);
                 if (event !== 'remove') {
                   return await self.localService.patch(res[self.id], res)
-                    .catch(err => {
-                      console.log(`err=${err.name}, ${err.message}`);
-                      debug(mdebug);
+                   .catch(err => {
+                    console.log(`err=${err.name}, ${err.message}`);
+                    debug(mdebug);
                       debug(`  localService.patch(${JSON.stringify(res[self.id])}, ${JSON.stringify(res)})`);
                       debug(`  ev = ${JSON.stringify(ev)}`);
-                      return false
-                    })
+                      return false})
                 }
                 else
                   return true;
               })
               .catch(err => {
                 console.log(`err2=${err.name}, ${err.message}`);
-                return false;
-              });
+                return false}
+              );
           })
           .catch(err => {
             console.log(`err3=${err.name}, ${err.message}`);
             if (err.name === 'Timeout' && err.type === 'FeathersError') {
               // We silently accept - we probably lost connection
+              stop = true;
             }
             else {
               if (event === 'remove' && el.onServerAt === 0) {
                 // This record has probably never been on server (=remoteService), so we silently ignore the error
               }
               else {
-                return true;
+                stop = true;
               }
             }
-            return false;
+            return stop;
           });
       }));
 console.log(`result=${JSON.stringify(result)}`);
-      stop = result.reduce((pv,cv,ci,arr) => stop || arr[ci]);
-    }
+      let r = result;
+   }
 
     this.addListeners();
     this.pQActive = false;
 
-    return !stop;
+    return stop;
   }
 
 };
@@ -178,29 +180,6 @@ function init (options) {
 
 let Ownnet = init;
 
-
-/**
- * A ownnewWrapper is a CLIENT adapter wrapping for FeathersJS services extending them to
- * implement the offline own-net principle (**LINK-TO-DOC**).
- *
- * @example ```
- * import feathers from '(at)feathersjs/feathers';
- * import memory from 'feathers-memory';
- * import { ownnetWrapper } from '(at)feathersjs-offline/ownnet';
- * const app = feathers();
- * app.use('/testpath', memory({id: 'uuid', clearStorage: true}));
- * ownnetWrapper(app, '/testpath');
- * app.service('testpath').create({givenName: 'James', familyName: 'Bond'})
- * ...
- * ```
- *
- * It works in co-existence with it's SERVER counterpart, RealtimeServiceWrapper.
- *
- * @param {object} app  The application handle
- * @param {object} path The service path (as used in ```app.use(path, serviceAdapter)```)
- * @param {object} options The options for the serviceAdaptor AND the OwnnetWrapper
- *
- */
 function ownnetWrapper (app, path, options = {}) {
   debug(`OwnnetWrapper started on path '${path}'`)
   if (!(app && app['version'] && app['service'] && app['services']) )

@@ -3,14 +3,14 @@ const feathers = require('@feathersjs/feathers');
 const { sorter } = require('@feathersjs/adapter-commons');
 const memory = require('feathers-memory');
 const errors = require('@feathersjs/errors');
-const { owndataWrapper } = require('../src');
+const { ownnetWrapper } = require('../src');
 const _ = require('lodash');
 const { omit, remove } = _;
 
 const sampleLen = 5; // Size of test database (backend)
 const verbose = false; // Should the test be chatty?
 
-const desc = 'own-data'
+const desc = 'own-net'
 const serviceName = '/from';
 
 let app;
@@ -93,7 +93,7 @@ function setupServices() {
   app = feathers();
 
   app.use(serviceName, memory({ multi: true }));
-  owndataWrapper(app, serviceName, {});
+  ownnetWrapper(app, serviceName, {});
   clientService = app.service(serviceName);
   setUpHooks('REMOTE', serviceName, clientService.remote, true);
   setUpHooks('CLIENT', serviceName, clientService.local, false);
@@ -118,7 +118,7 @@ describe(`${desc} - optimistic mutation`, () => {
 
   describe('General availability', () => {
     it('is CommonJS compatible', () => {
-      assert.strictEqual(typeof owndataWrapper, 'function');
+      assert.strictEqual(typeof ownnetWrapper, 'function');
     });
   });
 
@@ -193,27 +193,6 @@ describe(`${desc} - optimistic mutation`, () => {
         })
     });
 
-    it('create works', () => {
-      return clientService.create({ id: 99, uuid: 1099, order: 99 })
-        .then(delay())
-        .then(async result => {
-          const records = await getRows(clientService.local);
-
-          data[sampleLen] = { id: 99, uuid: 1099, order: 99 };
-
-          assertDeepEqualExcept([result], [{ id: 99, uuid: 1099, order: 99 }], ['updatedAt', 'onServerAt']);
-          assertDeepEqualExcept(events, [
-            { 'source': 1, 'action': 'mutated', 'eventName': 'created', 'record': { 'id': 99, 'uuid': 1099, 'order': 99, 'updatedAt': '2020-10-29T07:29:03.533Z', 'onServerAt': 0 } }, { 'source': 0, 'action': 'mutated', 'eventName': 'created', 'record': { 'id': 99, 'uuid': 1099, 'order': 99 } },
-            { 'source': 0, 'action': 'mutated', 'eventName': 'created', 'record': { 'id': 99, 'uuid': 1099, 'order': 99 } },
-            { 'action': 'remove-listeners' },
-            { 'action': 'add-listeners' }
-          ], ['updatedAt', 'onServerAt'], eventSort);
-
-          assert.lengthOf(records, sampleLen + 1);
-          assertDeepEqualExcept(records, data, ['updatedAt', 'onServerAt']);
-        })
-    });
-
     it('create adds missing uuid', () => {
       return clientService.create({ id: 99, order: 99 })
         .then(data => {
@@ -236,6 +215,29 @@ describe(`${desc} - optimistic mutation`, () => {
       }
     });
 
+    it('create works', () => {
+      return clientService.create({ id: 99, uuid: 1099, order: 99 })
+        .then(delay())
+        .then(async result => {
+          const records = await getRows(clientService.local);
+
+          data[sampleLen] = { id: 99, uuid: 1099, order: 99 };
+
+          assertDeepEqualExcept([result], [{ id: 99, uuid: 1099, order: 99 }], ['updatedAt', 'onServerAt']);
+
+          assertDeepEqualExcept(events, [
+            {"source":1,"action":"mutated","eventName":"created","record":{"id":99,"uuid":1099,"order":99}},
+            {"source":0,"action":"mutated","eventName":"created","record":{"id":99,"uuid":1099,"order":99}},
+            {"source":0,"action":"mutated","eventName":"created","record":{"id":99,"uuid":1099,"order":99}},
+            {"action":"remove-listeners"},
+            {"action":"add-listeners"}
+          ], ['updatedAt', 'onServerAt'], eventSort);
+
+          assert.lengthOf(records, sampleLen + 1);
+          assertDeepEqualExcept(records, data, ['updatedAt', 'onServerAt']);
+        })
+    });
+
     it('update works - ignores onServerAt', () => {
       const ts = new Date();
       return clientService.update(0, { id: 0, uuid: 1000, order: 99, onServerAt: ts })
@@ -251,11 +253,11 @@ describe(`${desc} - optimistic mutation`, () => {
           assertDeepEqualExcept(records, data, ['updatedAt', 'onServerAt']);
 
           assertDeepEqualExcept(events, [
-            { source: 1, eventName: 'updated', action: 'mutated', record: { id: 0, uuid: 1000, order: 99 } },
-            { source: 0, eventName: 'updated', action: 'mutated', record: { id: 0, uuid: 1000, order: 99 } },
-            { source: 0, eventName: 'updated', action: 'mutated', record: { id: 0, uuid: 1000, order: 99 } },
-            { action: 'remove-listeners' },
-            { action: 'add-listeners' }
+            {"source":1,"action":"mutated","eventName":"updated","record":{"id":0,"uuid":1000,"order":99}},
+            {"source":0,"action":"mutated","eventName":"updated","record":{"id":0,"uuid":1000,"order":99}},
+            {"source":0,"action":"mutated","eventName":"updated","record":{"id":0,"uuid":1000,"order":99}},
+            {"action":"remove-listeners"},
+            {"action":"add-listeners"}
           ], ['updatedAt', 'onServerAt'], eventSort);
         });
     });
@@ -275,11 +277,11 @@ describe(`${desc} - optimistic mutation`, () => {
           assertDeepEqualExcept(records, data, ['updatedAt', 'onServerAt']);
 
           assertDeepEqualExcept(events, [
-            { source: 1, eventName: 'patched', action: 'mutated', record: { id: 1, uuid: 1001, order: 99 } },
-            { source: 0, eventName: 'patched', action: 'mutated', record: { id: 1, uuid: 1001, order: 99 } },
-            { source: 0, eventName: 'patched', action: 'mutated', record: { id: 1, uuid: 1001, order: 99 } },
-            { action: 'remove-listeners' },
-            { action: 'add-listeners' }
+            {"source":1,"action":"mutated","eventName":"patched","record":{"id":1,"uuid":1001,"order":99}},
+            {"source":0,"action":"mutated","eventName":"patched","record":{"id":1,"uuid":1001,"order":99}},
+            {"source":0,"action":"mutated","eventName":"patched","record":{"id":1,"uuid":1001,"order":99}},
+            {"action":"remove-listeners"},
+            {"action":"add-listeners"}
           ], ['updatedAt', 'onServerAt'], eventSort);
         });
     });
@@ -293,14 +295,15 @@ describe(`${desc} - optimistic mutation`, () => {
 
           assertDeepEqualExcept([result], [{ id: 2, uuid: 1002, order: 2 }], ['updatedAt', 'onServerAt']);
           assert.lengthOf(records, sampleLen - 1);
+          console.log(`records = ${JSON.stringify(records)}\ndata = ${JSON.stringify(data)}`);
           assertDeepEqualExcept(records, data, ['updatedAt', 'onServerAt']);
 
           assertDeepEqualExcept(events, [
-            { source: 1, eventName: 'removed', action: 'remove', record: { id: 2, uuid: 1002, order: 2 } },
-            { source: 0, eventName: 'removed', action: 'remove', record: { id: 2, uuid: 1002, order: 2 } },
-            { source: 0, eventName: 'removed', action: 'remove', record: { id: 2, uuid: 1002, order: 2 } },
-            { action: 'remove-listeners' },
-            { action: 'add-listeners' }
+            {"source":1,"action":"remove","eventName":"removed","record":{"id":2,"uuid":1002,"order":2}},
+            {"source":0,"action":"remove","eventName":"removed","record":{"id":2,"uuid":1002,"order":2}},
+            {"source":0,"action":"remove","eventName":"removed","record":{"id":2,"uuid":1002,"order":2}},
+            {"action":"remove-listeners"},
+            {"action":"add-listeners"}
           ], ['updatedAt', 'onServerAt'], eventSort);
         });
     });
@@ -336,15 +339,16 @@ describe(`${desc} - optimistic mutation`, () => {
             { id: 98, uuid: 1098, order: 98 },
             { id: 99, uuid: 1099, order: 99 }
           ], ['updatedAt', 'onServerAt']);
+
           assertDeepEqualExcept(events, [
-            { source: 1, eventName: 'created', action: 'mutated', record: { id: 98, uuid: 1098, order: 98 } },
-            { source: 1, eventName: 'created', action: 'mutated', record: { id: 99, uuid: 1099, order: 99 } },
-            { source: 0, eventName: 'created', action: 'mutated', record: { id: 98, uuid: 1098, order: 98 } },
-            { source: 0, eventName: 'created', action: 'mutated', record: { id: 99, uuid: 1099, order: 99 } },
-            { source: 0, eventName: 'created', action: 'mutated', record: { id: 98, uuid: 1098, order: 98 } },
-            { source: 0, eventName: 'created', action: 'mutated', record: { id: 99, uuid: 1099, order: 99 } },
-            { action: 'remove-listeners' },
-            { action: 'add-listeners' }
+            {"source":1,"action":"mutated","eventName":"created","record":{"id":98,"uuid":1098,"order":98}},
+            {"source":1,"action":"mutated","eventName":"created","record":{"id":99,"uuid":1099,"order":99}},
+            {"source":0,"action":"mutated","eventName":"created","record":{"id":98,"uuid":1098,"order":98}},
+            {"source":0,"action":"mutated","eventName":"created","record":{"id":99,"uuid":1099,"order":99}},
+            {"source":0,"action":"mutated","eventName":"created","record":{"id":98,"uuid":1098,"order":98}},
+            {"source":0,"action":"mutated","eventName":"created","record":{"id":99,"uuid":1099,"order":99}},
+            {"action":"remove-listeners"},
+            {"action":"add-listeners"}
           ], ['updatedAt', 'onServerAt'], eventSort);
 
           assert.lengthOf(records, sampleLen + 2);
@@ -372,19 +376,18 @@ describe(`${desc} - optimistic mutation`, () => {
           assertDeepEqualExcept(records, data, ['updatedAt', 'onServerAt']);
 
           assertDeepEqualExcept(events, [
-            { action: 'remove-listeners' },
-            { action: 'add-listeners' },
-            { source: 1, eventName: 'patched', action: 'mutated', record: { id: 1, uuid: 1001, order: 1, foo: 1 } },
-            { source: 1, eventName: 'patched', action: 'mutated', record: { id: 2, uuid: 1002, order: 2, foo: 1 } },
-            { source: 1, eventName: 'patched', action: 'mutated', record: { id: 3, uuid: 1003, order: 3, foo: 1 } },
-            { source: 0, eventName: 'patched', action: 'mutated', record: { id: 1, uuid: 1001, order: 1, foo: 1 } },
-            { source: 0, eventName: 'patched', action: 'mutated', record: { id: 2, uuid: 1002, order: 2, foo: 1 } },
-            { source: 0, eventName: 'patched', action: 'mutated', record: { id: 3, uuid: 1003, order: 3, foo: 1 } },
-            { source: 0, eventName: 'patched', action: 'mutated', record: { id: 1, uuid: 1001, order: 1, foo: 1 } },
-            { source: 0, eventName: 'patched', action: 'mutated', record: { id: 2, uuid: 1002, order: 2, foo: 1 } },
-            { source: 0, eventName: 'patched', action: 'mutated', record: { id: 3, uuid: 1003, order: 3, foo: 1 } },
-            { action: 'remove-listeners' },
-            { action: 'add-listeners' }
+            {"action":"remove-listeners"},{"action":"add-listeners"},
+            {"source":1,"action":"mutated","eventName":"patched","record":{"id":1,"uuid":1001,"order":1,"foo":1}},
+            {"source":1,"action":"mutated","eventName":"patched","record":{"id":2,"uuid":1002,"order":2,"foo":1}},
+            {"source":1,"action":"mutated","eventName":"patched","record":{"id":3,"uuid":1003,"order":3,"foo":1}},
+            {"source":0,"action":"mutated","eventName":"patched","record":{"id":1,"uuid":1001,"order":1,"foo":1}},
+            {"source":0,"action":"mutated","eventName":"patched","record":{"id":2,"uuid":1002,"order":2,"foo":1}},
+            {"source":0,"action":"mutated","eventName":"patched","record":{"id":3,"uuid":1003,"order":3,"foo":1}},
+            {"source":0,"action":"mutated","eventName":"patched","record":{"id":1,"uuid":1001,"order":1,"foo":1}},
+            {"source":0,"action":"mutated","eventName":"patched","record":{"id":2,"uuid":1002,"order":2,"foo":1}},
+            {"source":0,"action":"mutated","eventName":"patched","record":{"id":3,"uuid":1003,"order":3,"foo":1}},
+            {"action":"remove-listeners"},
+            {"action":"add-listeners"}
           ], ['updatedAt', 'onServerAt'], eventSort);
         });
     });
@@ -406,19 +409,19 @@ describe(`${desc} - optimistic mutation`, () => {
           assertDeepEqualExcept(records, data, ['updatedAt', 'onServerAt']);
 
           assertDeepEqualExcept(events, [
-            { action: 'remove-listeners' },
-            { action: 'add-listeners' },
-            { source: 1, eventName: 'removed', action: 'remove', record: { id: 1, uuid: 1001, order: 1 } },
-            { source: 1, eventName: 'removed', action: 'remove', record: { id: 2, uuid: 1002, order: 2 } },
-            { source: 1, eventName: 'removed', action: 'remove', record: { id: 3, uuid: 1003, order: 3 } },
-            { source: 0, eventName: 'removed', action: 'remove', record: { id: 1, uuid: 1001, order: 1 } },
-            { source: 0, eventName: 'removed', action: 'remove', record: { id: 2, uuid: 1002, order: 2 } },
-            { source: 0, eventName: 'removed', action: 'remove', record: { id: 3, uuid: 1003, order: 3 } },
-            { source: 0, eventName: 'removed', action: 'remove', record: { id: 1, uuid: 1001, order: 1 } },
-            { source: 0, eventName: 'removed', action: 'remove', record: { id: 2, uuid: 1002, order: 2 } },
-            { source: 0, eventName: 'removed', action: 'remove', record: { id: 3, uuid: 1003, order: 3 } },
-            { action: 'remove-listeners' },
-            { action: 'add-listeners' }
+            {"action":"remove-listeners"},
+            {"action":"add-listeners"},
+            {"source":1,"action":"remove","eventName":"removed","record":{"id":1,"uuid":1001,"order":1}},
+            {"source":1,"action":"remove","eventName":"removed","record":{"id":2,"uuid":1002,"order":2}},
+            {"source":1,"action":"remove","eventName":"removed","record":{"id":3,"uuid":1003,"order":3}},
+            {"source":0,"action":"remove","eventName":"removed","record":{"id":1,"uuid":1001,"order":1}},
+            {"source":0,"action":"remove","eventName":"removed","record":{"id":2,"uuid":1002,"order":2}},
+            {"source":0,"action":"remove","eventName":"removed","record":{"id":3,"uuid":1003,"order":3}},
+            {"source":0,"action":"remove","eventName":"removed","record":{"id":1,"uuid":1001,"order":1}},
+            {"source":0,"action":"remove","eventName":"removed","record":{"id":2,"uuid":1002,"order":2}},
+            {"source":0,"action":"remove","eventName":"removed","record":{"id":3,"uuid":1003,"order":3}},
+            {"action":"remove-listeners"},
+            {"action":"add-listeners"}
           ], ['updatedAt', 'onServerAt'], eventSort);
         });
     });
@@ -782,10 +785,10 @@ describe(`${desc} - optimistic mutation`, () => {
         // See changes after synchronization
         .then(() => getRows(clientService.remote))
         .then(delay())
-        .then(afterRows => {
+        .then(remoteRows => {
           // Make sure remote data has not changed but client-side has...
-          assert.lengthOf(afterRows, sampleLen);
-          assertDeepEqualExcept(afterRows, beforeRows, ['updatedAt', 'onServerAt']);
+          assert.lengthOf(remoteRows, sampleLen-1);
+          assertDeepEqualExcept(afterRows, remoteRows, ['updatedAt', 'onServerAt']);
         })
     });
   });

@@ -31,7 +31,7 @@ function fromServiceNonPaginatedConfig(path) {
   return app.service(path);
 }
 
-describe('Owndata-test - client', () => {
+describe('Owndata-test - client only', () => {
 
   beforeEach(() => {
   });
@@ -48,18 +48,44 @@ describe('Owndata-test - Wrapper specific functionality', () => {
     try {
       owndataWrapper(app, path, { someDummyOption: 1 });
     } catch (err) {
-      expect(err.name).to.equal('Unavailable', 'No prior service registered on path');
+      expect(err.name).to.equal('Unavailable', 'Missing app parameter throws Unavailable');
     }
   });
 
-  it('fails with missing app', () => {
+  it('fails with missing or wrong app', () => {
     app = feathers();
     let path = newServicePath();
+    app.use(path, memory());
     app.service(path);
     try {
       owndataWrapper(path, { someDummyOption: 1 });
     } catch (err) {
       expect(err.name).to.equal('Unavailable', 'Missing app parameter throws Unavailable');
+    }
+    try {
+      owndataWrapper(null, path, { someDummyOption: 1 });
+    } catch (err) {
+      expect(err.name).to.equal('Unavailable', 'null app parameter throws Unavailable');
+    }
+    try {
+      owndataWrapper({}, path, { someDummyOption: 1 });
+    } catch (err) {
+      expect(err.name).to.equal('Unavailable', '{} app parameter throws Unavailable');
+    }
+    try {
+      owndataWrapper({ version: '1' }, path, { someDummyOption: 1 });
+    } catch (err) {
+      expect(err.name).to.equal('Unavailable', '{version:\'1\'} app parameter throws Unavailable');
+    }
+    try {
+      owndataWrapper({ version: '1', service: () => { } }, path, { someDummyOption: 1 });
+    } catch (err) {
+      expect(err.name).to.equal('Unavailable', '{version:\'1\', service: () =>{}} app parameter throws Unavailable');
+    }
+    try {
+      owndataWrapper({ version: '1', service: () => { }, services: [] }, path, { someDummyOption: 1 });
+    } catch (err) {
+      expect(err.name).to.equal('Unavailable', '{version:\'1\', service: () =>{}, services: []} app parameter throws Unavailable');
     }
   });
 
@@ -98,6 +124,81 @@ describe('Owndata-test - Wrapper specific functionality', () => {
       })
   });
 
+  it('access local', () => {
+    app = feathers();
+    let path = newServicePath();
+    app.use(path, memory());
+    owndataWrapper(app, path, {});
+    let service = app.service(path);
+    let localService = service.local;
+
+    return localService.create({ id: 99, order: 99 })
+      .then(data => {
+        expect(data).to.deep.equal({ id: 99, order: 99 }, 'Object not changed');
+      })
+  });
+
+  it('set local throws error', () => {
+    app = feathers();
+    let path = newServicePath();
+    app.use(path, memory());
+    owndataWrapper(app, path, {});
+    let service = app.service(path);
+
+    try {
+      service.local = () => { return { id: 99, order: 99 } };
+      expect(true).to.equal(false, 'We should not be able to get here!!');
+    } catch (error) {
+      expect(error.name).to.equal('Forbidden', 'Forbidden was thrown as expected');
+    }
+  });
+
+
+  it('access queue', () => {
+    app = feathers();
+    let path = newServicePath();
+    app.use(path, memory());
+    owndataWrapper(app, path, {});
+    let service = app.service(path);
+    let localQueue = service.queue;
+
+    return localQueue.create({ id: 99, order: 99 })
+      .then(data => {
+        expect(data).to.deep.equal({ id: 99, order: 99 }, 'Object not changed');
+      })
+  });
+
+  it('set queue throws error', () => {
+    app = feathers();
+    let path = newServicePath();
+    app.use(path, memory());
+    owndataWrapper(app, path, {});
+    let service = app.service(path);
+
+    try {
+      service.queue = () => { return { id: 99, order: 99 } };
+      expect(true).to.equal(false, 'We should not be able to get here!!');
+    } catch (error) {
+      expect(error.name).to.equal('Forbidden', 'Forbidden was thrown as expected');
+    }
+  });
+
+
+  it('access remote', () => {
+    app = feathers();
+    let path = newServicePath();
+    app.use(path, memory());
+    owndataWrapper(app, path, {});
+    let service = app.service(path);
+    let remoteService = service.remote;
+
+    return remoteService.create({ id: 99, order: 99 })
+      .then(data => {
+        expect(data).to.deep.equal({ id: 99, order: 99 }, 'Object not changed');
+      })
+  });
+
+
   it('simulation hook throws error', () => {
     app = feathers();
     let path = newServicePath();
@@ -116,63 +217,162 @@ describe('Owndata-test - Wrapper specific functionality', () => {
     }
   });
 
-  describe('mutator specific tests', () => {
-    it('MutateStore is a class', () => {
-      try {
-        expect(typeof MutateStore).to.equal('function', 'MutateStore should be a class');
-        let mutator = new MutateStore({});
-        expect(typeof mutator).to.equal('object', 'Instance of MutateStore should be an object');
-      } catch (error) {
-        expect(error.name).to.equal('BadRequest', 'MutateStore is no longer what is expected!');
-        return true;
-      }
-    });
 
-    it('publication is not a function', () => {
-      try {
-        let mutator = new MutateStore({ publication: {} });
-        expect(true).to.equal(false, 'This misconfigured publication should throw');
-      } catch (error) {
-        expect(error.name).to.equal('BadRequest', 'Misconfigured publication should throw BadRequest');
-        return true;
-      }
-    });
+  it('set remote throws error', () => {
+    app = feathers();
+    let path = newServicePath();
+    app.use(path, memory());
+    owndataWrapper(app, path, {});
+    let service = app.service(path);
 
-    it('subscriber is not a function', () => {
-      try {
-        let mutator = new MutateStore({ subscriber: null });
-        expect(true).to.equal(false, 'This misconfigured subscriber should throw');
-      } catch (error) {
-        expect(error.name).to.equal('BadRequest', 'Misconfigured subscriber should throw BadRequest');
-        return true;
-      }
-    });
+    try {
+      service.remote = () => { return { id: 99, order: 99 } };
+      expect(true).to.equal(false, 'We should not be able to get here!!');
+    } catch (error) {
+      expect(error.name).to.equal('Forbidden', 'Forbidden was thrown as expected');
+    }
+  });
 
-    it('emitter is not a function', () => {
-      try {
-        let mutator = new MutateStore({ emitter: null });
-        expect(true).to.equal(false, 'This misconfigured emitter should throw');
-      } catch (error) {
-        expect(error.name).to.equal('BadRequest', 'Misconfigured emitter should throw BadRequest');
-        return true;
-      }
-    });
 
-    it('no sorter', () => {
-      try {
-        let mutator = new MutateStore({ sort: null });
-        let rec1 = mutator.mutate('created', {id:1, name: 'first'}, 1);
-        let rec2 = mutator.mutate('created', {id:1, name: 'first'}, 0);
-        expect(rec1).to.not.equal(rec2, 'The records should be different');
-        expect(rec1.record).to.equal(rec2.record, 'The rec.records should be equal');
-        expect(rec1.eventName).to.equal(rec2.eventName, 'The rec.eventName should be equal');
-      } catch (error) {
-        expect(error.name).to.equal('BadRequest', 'MutateStore is mot functioning as expected');
-        return true;
-      }
-    });
+})
+
+describe('_ functions throws exception', () => {
+  let service;
+
+  beforeEach(() => {
+    app = feathers();
+    let path = newServicePath();
+    app.use(path, memory());
+    owndataWrapper(app, path, {});
+    service = app.service(path);
+  });
+
+
+  it('_get exists', () => {
+    expect(typeof service._get).to.equal('function', '_get is not defined!');
+  });
+
+  it('_get throws', () => {
+    return service._get(99)
+      .catch(error => {
+        expect(error.name).to.equal('NotImplemented', `${error.message}`);
+      });
+  });
+
+  it('_find exists', () => {
+    expect(typeof service._find).to.equal('function', '_find is not defined!');
+  });
+
+  it('_find throws', () => {
+    return service._find()
+      .catch(error => {
+        expect(error.name).to.equal('NotImplemented', `${error.message}`);
+      });
+  });
+
+  it('_create exists', () => {
+    expect(typeof service._create).to.equal('function', '_create is not defined!');
+  });
+
+  it('_create throws', () => {
+    return service._create({id:99})
+      .catch(error => {
+        expect(error.name).to.equal('NotImplemented', `${error.message}`);
+      });
+  });
+
+  it('_update exists', () => {
+    expect(typeof service._update).to.equal('function', '_update is not defined!');
+  });
+
+  it('_update throws', () => {
+    return service._update(99, {b:3})
+      .catch(error => {
+        expect(error.name).to.equal('NotImplemented', `${error.message}`);
+      });
+  });
+
+  it('_patch exists', () => {
+    expect(typeof service._patch).to.equal('function', '_patch is not defined!');
+  });
+
+  it('_patch throws', () => {
+    return service._patch(99, {b:2})
+      .catch(error => {
+        expect(error.name).to.equal('NotImplemented', `${error.message}`);
+      });
+  });
+
+  it('_remove exists', () => {
+    expect(typeof service._remove).to.equal('function', '_remove is not defined!');
+  });
+
+  it('_remove throws', () => {
+    return service._remove(99)
+      .catch(error => {
+        expect(error.name).to.equal('NotImplemented', `${error.message}`);
+      });
+  });
+
+});
+
+describe('mutator specific tests', () => {
+  it('MutateStore is a class', () => {
+    try {
+      expect(typeof MutateStore).to.equal('function', 'MutateStore should be a class');
+      let mutator = new MutateStore({});
+      expect(typeof mutator).to.equal('object', 'Instance of MutateStore should be an object');
+    } catch (error) {
+      expect(error.name).to.equal('BadRequest', 'MutateStore is no longer what is expected!');
+      return true;
+    }
+  });
+
+  it('publication is not a function', () => {
+    try {
+      let mutator = new MutateStore({ publication: {} });
+      expect(true).to.equal(false, 'This misconfigured publication should throw');
+    } catch (error) {
+      expect(error.name).to.equal('BadRequest', 'Misconfigured publication should throw BadRequest');
+      return true;
+    }
+  });
+
+  it('subscriber is not a function', () => {
+    try {
+      let mutator = new MutateStore({ subscriber: null });
+      expect(true).to.equal(false, 'This misconfigured subscriber should throw');
+    } catch (error) {
+      expect(error.name).to.equal('BadRequest', 'Misconfigured subscriber should throw BadRequest');
+      return true;
+    }
+  });
+
+  it('emitter is not a function', () => {
+    try {
+      let mutator = new MutateStore({ emitter: null });
+      expect(true).to.equal(false, 'This misconfigured emitter should throw');
+    } catch (error) {
+      expect(error.name).to.equal('BadRequest', 'Misconfigured emitter should throw BadRequest');
+      return true;
+    }
+  });
+
+  it('no sorter', () => {
+    try {
+      let mutator = new MutateStore({ sort: null });
+      let rec1 = mutator.mutate('created', { id: 1, name: 'first' }, 1);
+      let rec2 = mutator.mutate('created', { id: 1, name: 'first' }, 0);
+      expect(rec1).to.not.equal(rec2, 'The records should be different');
+      expect(rec1.record).to.equal(rec2.record, 'The rec.records should be equal');
+      expect(rec1.eventName).to.equal(rec2.eventName, 'The rec.eventName should be equal');
+    } catch (error) {
+      expect(error.name).to.equal('BadRequest', 'MutateStore is mot functioning as expected');
+      return true;
+    }
   });
 });
+
 
 
 // Helpers

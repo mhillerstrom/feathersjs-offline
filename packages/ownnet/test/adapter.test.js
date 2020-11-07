@@ -3,7 +3,7 @@ const feathers = require('@feathersjs/feathers');
 const errors =  require('@feathersjs/errors');
 const adapterTests = require('@feathersjs/adapter-tests');
 const memory = require('feathers-memory');
-const { Ownnet, ownnetWrapper } = require('../lib');
+const { Ownnet, ownnetWrapper } = require('../src');
 
 const testSuite = adapterTests([
   '.options',
@@ -73,14 +73,12 @@ const testSuite = adapterTests([
   '.find + paginate + params'
 ]);
 
-let app;
-
 describe('OwnnetWrapper - adapterTest', () => {
   beforeEach(() => {
   });
 
   // Let's perform all the usual adapter tests to verify full functionality
-  app = feathers();
+  let app = feathers();
   const events = ['testing'];
 
   app.use('people', memory({ events }));
@@ -90,4 +88,8 @@ describe('OwnnetWrapper - adapterTest', () => {
   app.use('people-customid', memory({ events, id: 'customid' }));
   ownnetWrapper(app, 'people-customid', { adapterTest: true, clearStorage: true });
   testSuite(app, errors, 'people-customid', 'customid');
+
+  app.use('people-uuid', memory({ events, id: 'uuid' }));
+  ownnetWrapper(app, 'people-uuid', { adapterTest: true, clearStorage: true });
+  testSuite(app, errors, 'people-uuid', 'uuid');
 });

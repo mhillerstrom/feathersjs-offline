@@ -3,14 +3,14 @@ const assert = require('chai').assert;
 const feathers = require('@feathersjs/feathers');
 const memory = require('feathers-memory');
 const errors = require('@feathersjs/errors');
-const { owndataWrapper } = require('../src');
+const { ownnetWrapper } = require('../src');
 const _ = require('lodash');
 const { omit } = _;
 
 const sampleLen = 5; // Size of test database (backend)
 const verbose = false; // Should the test be chatty?
 
-const desc = 'own-data'
+const desc = 'own-net'
 const serviceName = '/from';
 
 let app;
@@ -77,7 +77,7 @@ function setupServices (publication = null, subscriber = () => { }) {
   if (publication !== null) options.publication = publication;
 
   app.use(serviceName, memory({ multi: true }));
-  owndataWrapper(app, serviceName, options);
+  ownnetWrapper(app, serviceName, options);
   clientService = app.service(serviceName);
   setUpHooks('REMOTE', serviceName, clientService.remote, true);
   setUpHooks('CLIENT', serviceName, clientService.local, false);
