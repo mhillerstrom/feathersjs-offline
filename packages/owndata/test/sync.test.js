@@ -62,7 +62,7 @@ describe('Owndata-test - sync', () => {
     // Define client
     app = feathers();
     app.configure(socketioClient(socket));
-    app.use(path, Owndata({ clearStorage: true }));
+    app.use(path, Owndata());
     service = app.service(path);
     // ['created', 'updated', 'patched', 'removed'].forEach(a => service.on(a, logAction('CLIENT', a)));
     // ['created', 'updated', 'patched', 'removed'].forEach(a => service.local.on(a, logAction('LOCAL', a)));

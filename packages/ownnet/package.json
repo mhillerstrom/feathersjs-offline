@@ -44,12 +44,13 @@
   },
   "dependencies": {
     "@feathersjs-offline/common": "^0.0.1",
+    "@feathersjs-offline/snapshot": "^0.0.1",
+    "@feathersjs/adapter-commons": "^4.5.7",
     "@feathersjs-offline/owndata": "^0.0.1",
     "@feathersjs/commons": "^4.5.9"
   },
   "devDependencies": {
     "@feathersjs-offline/server": "^0.0.1",
-    "@feathersjs/adapter-commons": "^4.5.7",
     "@feathersjs/adapter-tests": "^4.5.4",
     "@feathersjs/express": "^4.5.9",
     "@feathersjs/feathers": "^4.5.9",

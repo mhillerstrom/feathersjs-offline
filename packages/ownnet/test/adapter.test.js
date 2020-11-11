@@ -82,14 +82,14 @@ describe('OwnnetWrapper - adapterTest', () => {
   const events = ['testing'];
 
   app.use('people', memory({ events }));
-  ownnetWrapper(app, 'people', { adapterTest: true, clearStorage: true });
+  ownnetWrapper(app, 'people', { adapterTest: true});
   testSuite(app, errors, 'people');
 
   app.use('people-customid', memory({ events, id: 'customid' }));
-  ownnetWrapper(app, 'people-customid', { adapterTest: true, clearStorage: true });
+  ownnetWrapper(app, 'people-customid', { adapterTest: true});
   testSuite(app, errors, 'people-customid', 'customid');
 
   app.use('people-uuid', memory({ events, id: 'uuid' }));
-  ownnetWrapper(app, 'people-uuid', { adapterTest: true, clearStorage: true });
+  ownnetWrapper(app, 'people-uuid', { adapterTest: true});
   testSuite(app, errors, 'people-uuid', 'uuid');
 });

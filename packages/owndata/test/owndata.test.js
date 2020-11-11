@@ -79,7 +79,7 @@ function failOnceHook(type, serviceName, service, method) {
     before: {
       [method]: [async context => {
         if (!triggered) {
-         triggered = true;
+          triggered = true;
           throw new errors.GeneralError('Fail requested by user request - simulated general error');
         }
         return context;
@@ -123,19 +123,12 @@ describe(`${desc} - optimistic mutation`, () => {
   });
 
   describe('not connected', () => {
-    let events;
 
     beforeEach(() => {
-      events = [];
-
       return clientService.create(clone(data))
         .then(delay())
         .then(() => {
           clientService = app.service(serviceName);
-
-          clientService.on('events', (records, last) => {
-            events[events.length] = last;
-          });
         });
     });
 
@@ -152,30 +145,17 @@ describe(`${desc} - optimistic mutation`, () => {
   });
 
   describe('without publication', () => {
-    let events;
 
     beforeEach(() => {
-      events = [];
-
       return clientService.create(clone(data))
         .then(delay())
-        .then(() => {
-          clientService.on('events', (records, last) => {
-            events[events.length] = last;
-          });
-        });
     });
 
-    afterEach(() => {
-      clientService.removeAllListeners();
-    });
-
-    it('find works', () => {
-      return clientService.find({ query: { order: { $lt: 3 } } })
+    it('find works', async () => {
+      return await clientService.find({ query: { order: { $lt: 3 } } })
         .then(async result => {
           const records = await getRows(clientService.local);
           assertDeepEqualExcept(result, data.slice(0, 3), ['updatedAt', 'onServerAt', 'deletedAt']);
-          assert.lengthOf(events, 0);
           assert.lengthOf(records, sampleLen);
           assertDeepEqualExcept(records, data, ['updatedAt', 'onServerAt', 'deletedAt']);
         })
@@ -187,7 +167,6 @@ describe(`${desc} - optimistic mutation`, () => {
           const records = await getRows(clientService.local);
 
           assertDeepEqualExcept([result], [{ id: 0, uuid: 1000, order: 0 }], ['updatedAt', 'onServerAt']);
-          assert.lengthOf(events, 0);
           assert.lengthOf(records, sampleLen);
           assertDeepEqualExcept(records, data, ['updatedAt', 'onServerAt']);
         })
@@ -202,12 +181,6 @@ describe(`${desc} - optimistic mutation`, () => {
           data[sampleLen] = { id: 99, uuid: 1099, order: 99 };
 
           assertDeepEqualExcept([result], [{ id: 99, uuid: 1099, order: 99 }], ['updatedAt', 'onServerAt']);
-          assertDeepEqualExcept(events, [
-            { 'source': 1, 'action': 'mutated', 'eventName': 'created', 'record': { 'id': 99, 'uuid': 1099, 'order': 99, 'updatedAt': '2020-10-29T07:29:03.533Z', 'onServerAt': 0 } }, { 'source': 0, 'action': 'mutated', 'eventName': 'created', 'record': { 'id': 99, 'uuid': 1099, 'order': 99 } },
-            { 'source': 0, 'action': 'mutated', 'eventName': 'created', 'record': { 'id': 99, 'uuid': 1099, 'order': 99 } },
-            { 'action': 'remove-listeners' },
-            { 'action': 'add-listeners' }
-          ], ['updatedAt', 'onServerAt'], eventSort);
 
           assert.lengthOf(records, sampleLen + 1);
           assertDeepEqualExcept(records, data, ['updatedAt', 'onServerAt']);
@@ -245,19 +218,15 @@ describe(`${desc} - optimistic mutation`, () => {
           const record = data.splice(0, 1);
           data[data.length] = { id: 0, uuid: 1000, order: 99 };
 
-          assert.ok(record.onServerAt !== ts, 'onServerAt is preserved');
+          console.log(`records = ${JSON.stringify(records)}\ndata = ${JSON.stringify(data)}`)
+          assert.ok(record.onServerAt !== ts, 'onServerAt is preserved (1)');
+          assert.ok(records[data.length-1].id === data[data.length-1].id, 'onServerAt is preserved (1a)');
+          assert.ok(records[data.length-1].onServerAt !== data[data.length-1].onServerAt, 'onServerAt is preserved (2)');
+          assert.ok(records[data.length-1].onServerAt === 0, 'onServerAt is preserved (3)');
           assertDeepEqualExcept([result], [{ id: 0, uuid: 1000, order: 99 }], ['updatedAt', 'onServerAt']);
           assert.lengthOf(records, sampleLen);
           assertDeepEqualExcept(records, data, ['updatedAt', 'onServerAt']);
-
-          assertDeepEqualExcept(events, [
-            { source: 1, eventName: 'updated', action: 'mutated', record: { id: 0, uuid: 1000, order: 99 } },
-            { source: 0, eventName: 'updated', action: 'mutated', record: { id: 0, uuid: 1000, order: 99 } },
-            { source: 0, eventName: 'updated', action: 'mutated', record: { id: 0, uuid: 1000, order: 99 } },
-            { action: 'remove-listeners' },
-            { action: 'add-listeners' }
-          ], ['updatedAt', 'onServerAt'], eventSort);
-        });
+       });
     });
 
     it('patch works - ignores onServerAt', () => {
@@ -269,18 +238,11 @@ describe(`${desc} - optimistic mutation`, () => {
           const record = data.splice(1, 1);
           data[data.length] = { id: 1, uuid: 1001, order: 99 };
 
-          assert.ok(record.onServerAt !== ts, 'onServerAt is preserved');
+          assert.ok(record.onServerAt !== ts, 'onServerAt is preserved (1)');
+          assert.ok(records[data.length-1].onServerAt === 0, 'onServerAt is preserved (2)');
           assertDeepEqualExcept([result], [{ id: 1, uuid: 1001, order: 99 }], ['updatedAt', 'onServerAt']);
           assert.lengthOf(records, sampleLen);
           assertDeepEqualExcept(records, data, ['updatedAt', 'onServerAt']);
-
-          assertDeepEqualExcept(events, [
-            { source: 1, eventName: 'patched', action: 'mutated', record: { id: 1, uuid: 1001, order: 99 } },
-            { source: 0, eventName: 'patched', action: 'mutated', record: { id: 1, uuid: 1001, order: 99 } },
-            { source: 0, eventName: 'patched', action: 'mutated', record: { id: 1, uuid: 1001, order: 99 } },
-            { action: 'remove-listeners' },
-            { action: 'add-listeners' }
-          ], ['updatedAt', 'onServerAt'], eventSort);
         });
     });
 
@@ -294,30 +256,15 @@ describe(`${desc} - optimistic mutation`, () => {
           assertDeepEqualExcept([result], [{ id: 2, uuid: 1002, order: 2 }], ['updatedAt', 'onServerAt']);
           assert.lengthOf(records, sampleLen - 1);
           assertDeepEqualExcept(records, data, ['updatedAt', 'onServerAt']);
-
-          assertDeepEqualExcept(events, [
-            { source: 1, eventName: 'removed', action: 'remove', record: { id: 2, uuid: 1002, order: 2 } },
-            { source: 0, eventName: 'removed', action: 'remove', record: { id: 2, uuid: 1002, order: 2 } },
-            { source: 0, eventName: 'removed', action: 'remove', record: { id: 2, uuid: 1002, order: 2 } },
-            { action: 'remove-listeners' },
-            { action: 'add-listeners' }
-          ], ['updatedAt', 'onServerAt'], eventSort);
         });
     });
   });
 
   describe('without publication, null id', () => {
-    let events;
 
     beforeEach(() => {
-      events = [];
 
       return clientService.create(clone(data))
-        .then(() => {
-          clientService.on('events', (records, last) => {
-            events[events.length] = last;
-          });
-        });
     });
 
     it('create works', () => {
@@ -336,16 +283,6 @@ describe(`${desc} - optimistic mutation`, () => {
             { id: 98, uuid: 1098, order: 98 },
             { id: 99, uuid: 1099, order: 99 }
           ], ['updatedAt', 'onServerAt']);
-          assertDeepEqualExcept(events, [
-            { source: 1, eventName: 'created', action: 'mutated', record: { id: 98, uuid: 1098, order: 98 } },
-            { source: 1, eventName: 'created', action: 'mutated', record: { id: 99, uuid: 1099, order: 99 } },
-            { source: 0, eventName: 'created', action: 'mutated', record: { id: 98, uuid: 1098, order: 98 } },
-            { source: 0, eventName: 'created', action: 'mutated', record: { id: 99, uuid: 1099, order: 99 } },
-            { source: 0, eventName: 'created', action: 'mutated', record: { id: 98, uuid: 1098, order: 98 } },
-            { source: 0, eventName: 'created', action: 'mutated', record: { id: 99, uuid: 1099, order: 99 } },
-            { action: 'remove-listeners' },
-            { action: 'add-listeners' }
-          ], ['updatedAt', 'onServerAt'], eventSort);
 
           assert.lengthOf(records, sampleLen + 2);
           assertDeepEqualExcept(records, data, ['updatedAt', 'onServerAt']);
@@ -370,22 +307,6 @@ describe(`${desc} - optimistic mutation`, () => {
 
           assert.lengthOf(records, sampleLen);
           assertDeepEqualExcept(records, data, ['updatedAt', 'onServerAt']);
-
-          assertDeepEqualExcept(events, [
-            { action: 'remove-listeners' },
-            { action: 'add-listeners' },
-            { source: 1, eventName: 'patched', action: 'mutated', record: { id: 1, uuid: 1001, order: 1, foo: 1 } },
-            { source: 1, eventName: 'patched', action: 'mutated', record: { id: 2, uuid: 1002, order: 2, foo: 1 } },
-            { source: 1, eventName: 'patched', action: 'mutated', record: { id: 3, uuid: 1003, order: 3, foo: 1 } },
-            { source: 0, eventName: 'patched', action: 'mutated', record: { id: 1, uuid: 1001, order: 1, foo: 1 } },
-            { source: 0, eventName: 'patched', action: 'mutated', record: { id: 2, uuid: 1002, order: 2, foo: 1 } },
-            { source: 0, eventName: 'patched', action: 'mutated', record: { id: 3, uuid: 1003, order: 3, foo: 1 } },
-            { source: 0, eventName: 'patched', action: 'mutated', record: { id: 1, uuid: 1001, order: 1, foo: 1 } },
-            { source: 0, eventName: 'patched', action: 'mutated', record: { id: 2, uuid: 1002, order: 2, foo: 1 } },
-            { source: 0, eventName: 'patched', action: 'mutated', record: { id: 3, uuid: 1003, order: 3, foo: 1 } },
-            { action: 'remove-listeners' },
-            { action: 'add-listeners' }
-          ], ['updatedAt', 'onServerAt'], eventSort);
         });
     });
 
@@ -404,38 +325,15 @@ describe(`${desc} - optimistic mutation`, () => {
 
           assert.lengthOf(records, sampleLen - 3);
           assertDeepEqualExcept(records, data, ['updatedAt', 'onServerAt']);
-
-          assertDeepEqualExcept(events, [
-            { action: 'remove-listeners' },
-            { action: 'add-listeners' },
-            { source: 1, eventName: 'removed', action: 'remove', record: { id: 1, uuid: 1001, order: 1 } },
-            { source: 1, eventName: 'removed', action: 'remove', record: { id: 2, uuid: 1002, order: 2 } },
-            { source: 1, eventName: 'removed', action: 'remove', record: { id: 3, uuid: 1003, order: 3 } },
-            { source: 0, eventName: 'removed', action: 'remove', record: { id: 1, uuid: 1001, order: 1 } },
-            { source: 0, eventName: 'removed', action: 'remove', record: { id: 2, uuid: 1002, order: 2 } },
-            { source: 0, eventName: 'removed', action: 'remove', record: { id: 3, uuid: 1003, order: 3 } },
-            { source: 0, eventName: 'removed', action: 'remove', record: { id: 1, uuid: 1001, order: 1 } },
-            { source: 0, eventName: 'removed', action: 'remove', record: { id: 2, uuid: 1002, order: 2 } },
-            { source: 0, eventName: 'removed', action: 'remove', record: { id: 3, uuid: 1003, order: 3 } },
-            { action: 'remove-listeners' },
-            { action: 'add-listeners' }
-          ], ['updatedAt', 'onServerAt'], eventSort);
         });
     });
   });
 
   describe('without publication & remote error (timeout)', () => {
-    let events;
 
     beforeEach(() => {
-      events = [];
       return clientService.create(clone(data))
         .then(delay())
-        .then(() => {
-          clientService.on('events', (records, last) => {
-            events[events.length] = last;
-          });
-        });
     });
 
     it('get succeeds correctly', () => {
@@ -469,10 +367,6 @@ describe(`${desc} - optimistic mutation`, () => {
         .then(delay())
         .then(rows => { clientRows = rows; })
         .then(() => {
-          assertDeepEqualExcept(events, [
-            { source: 1, eventName: 'created', action: 'mutated', record: { id: 99, uuid: 1099, order: 99 } }
-          ], ['updatedAt', 'onServerAt']);
-
           data[data.length] = { id: 99, uuid: 1099, order: 99 };
 
           assert.lengthOf(clientRows, sampleLen + 1);
@@ -496,11 +390,6 @@ describe(`${desc} - optimistic mutation`, () => {
 
       return clientService.update(0, { id: 0, uuid: 1000, order: 99 }, { query: { _fail: true } })
         .then(delay())
-        .then(() => {
-          assertDeepEqualExcept(events, [
-            { source: 1, eventName: 'updated', action: 'mutated', record: { id: 0, uuid: 1000, order: 99 } }
-          ], ['updatedAt', 'onServerAt'], eventSort);
-        })
         // We have simulated offline - make sure remote data has not yet changed...
         .then(() => getRows(clientService.remote))
         .then(delay())
@@ -535,10 +424,6 @@ describe(`${desc} - optimistic mutation`, () => {
         .then(delay())
         .then(rows => { clientRows = rows; })
         .then(() => {
-          assertDeepEqualExcept(events, [
-            { source: 1, eventName: 'patched', action: 'mutated', record: { id: 1, uuid: 1001, order: 99 } }
-          ], ['updatedAt', 'onServerAt'], eventSort);
-
           assert.lengthOf(clientRows, sampleLen);
         })
         // We have simulated offline - make sure remote data has not yet changed...
@@ -568,9 +453,6 @@ describe(`${desc} - optimistic mutation`, () => {
         .then(async () => {
           const records = await getRows(clientService.local);
 
-          assertDeepEqualExcept(events, [
-            { 'source': 1, 'action': 'remove', 'eventName': 'removed', 'record': { 'id': 2, 'uuid': 1002, 'order': 2 } }
-          ], ['updatedAt', 'onServerAt'], eventSort);
           assert.lengthOf(records, sampleLen - 1);
 
           // Remove uuid=1002 from sample data
@@ -604,17 +486,10 @@ describe(`${desc} - optimistic mutation`, () => {
   });
 
   describe('without publication & remote error (not timeout)', () => {
-    let events;
 
     beforeEach(() => {
-      events = [];
       return clientService.create(clone(data))
         .then(delay())
-        .then(() => {
-          clientService.on('events', (records, last) => {
-            events[events.length] = last;
-          });
-        });
     });
 
     it('get succeeds correctly', () => {
@@ -657,11 +532,6 @@ describe(`${desc} - optimistic mutation`, () => {
           assert.lengthOf(beforeRows, sampleLen);
           assert.lengthOf(afterRows, sampleLen);
           assertDeepEqualExcept(beforeRows, afterRows, ['updatedAt', 'onServerAt']);
-
-          assertDeepEqualExcept(events, [
-            { "source": 1, "action": "mutated", "eventName": "created", "record": { "id": 99, "uuid": 1099, "order": 99 } },
-            { "source": 2, "action": "remove", "eventName": "removed", "record": { "id": 99, "uuid": 1099, "order": 99 } }
-          ], ['updatedAt', 'onServerAt']);
         })
         .then(delay())
         .then(() => clientService.sync())
@@ -694,11 +564,6 @@ describe(`${desc} - optimistic mutation`, () => {
           assert.lengthOf(beforeRows, sampleLen);
           assert.lengthOf(afterRows, sampleLen);
           assertDeepEqualExcept(beforeRows, afterRows, ['updatedAt', 'onServerAt']);
-
-          assertDeepEqualExcept(events, [
-            { "source": 1, "action": "mutated", "eventName": "updated", "record": { "id": 0, "uuid": 1000, "order": 99 } },
-            { "source": 2, "action": "mutated", "eventName": "updated", "record": { "id": 0, "uuid": 1000, "order": 99 } }
-          ], ['updatedAt', 'onServerAt'], eventSort);
         })
         .then(delay())
         .then(() => clientService.sync())
@@ -733,11 +598,6 @@ describe(`${desc} - optimistic mutation`, () => {
           assert.lengthOf(beforeRows, sampleLen);
           assert.lengthOf(afterRows, sampleLen);
           assertDeepEqualExcept(beforeRows, afterRows, ['updatedAt', 'onServerAt']);
-
-          assertDeepEqualExcept(events, [
-            { "source": 1, "action": "mutated", "eventName": "patched", "record": { "id": 1, "uuid": 1001, "order": 99 } },
-            { "source": 2, "action": "mutated", "eventName": "updated", "record": { "id": 1, "uuid": 1001, "order": 99 } }
-          ], ['updatedAt', 'onServerAt'], eventSort);
         })
         .then(delay())
         .then(() => clientService.sync())
@@ -771,10 +631,6 @@ describe(`${desc} - optimistic mutation`, () => {
         .then(() => {
           assert.lengthOf(beforeRows, sampleLen);
           assert.lengthOf(afterRows, sampleLen - 1);
-
-          assertDeepEqualExcept(events, [
-            { 'source': 1, 'action': 'remove', 'eventName': 'removed', 'record': { 'id': 2, 'uuid': 1002, 'order': 2 } }
-          ], ['updatedAt', 'onServerAt'], eventSort);
         })
         .then(delay())
         .then(() => clientService.sync())
@@ -892,17 +748,10 @@ describe(`${desc} - optimistic mutation`, () => {
   });
 
   describe('test of sync', () => {
-    let events;
 
     beforeEach(() => {
-      events = [];
       return clientService.create(clone(data))
         .then(delay())
-        .then(() => {
-          clientService.on('events', (records, last) => {
-            events[events.length] = last;
-          });
-        });
     });
 
     it('sync all', () => {
@@ -915,14 +764,6 @@ describe(`${desc} - optimistic mutation`, () => {
         .then(delay())
         .then(() => clientService.update(0, { id: 0, uuid: 1000, order: 9999 }, { query: { _fail: true, _timeout: true } }))
         .then(delay())
-        .then(() => {
-          assertDeepEqualExcept(events, [
-            { action: 'add-listeners' },
-            { source: 1, eventName: 'updated', action: 'mutated', record: { id: 0, uuid: 1000, order: 99 } },
-            { source: 1, eventName: 'updated', action: 'mutated', record: { id: 0, uuid: 1000, order: 999 } },
-            { source: 1, eventName: 'updated', action: 'mutated', record: { id: 0, uuid: 1000, order: 9999 } }
-          ], ['updatedAt', 'onServerAt'], eventSort);
-        })
         // We have simulated offline - make sure remote data has not yet changed...
         .then(() => clientService.remote.find({ query: { uuid: 1000 } }))
         .then(delay())
@@ -954,41 +795,42 @@ describe(`${desc} - optimistic mutation`, () => {
   });
 });
 
-// Helpers
 
-function clone(obj) {
-  return JSON.parse(JSON.stringify(obj));
-}
+  // Helpers
 
-function delay(ms = 0) {
-  return data => new Promise(resolve => {
-    setTimeout(() => {
-      resolve(data);
-    }, ms);
-  });
-}
+  function clone(obj) {
+    return JSON.parse(JSON.stringify(obj));
+  }
 
-function assertDeepEqualExcept(ds1, ds2, ignore, sort) {
-  function removeIgnore(ds) {
-    let dsc = clone(ds);
-    dsc = omit(dsc, ignore);
-    for (const i in dsc) {
-      if (typeof dsc[i] === 'object') {
-        dsc[i] = removeIgnore(dsc[i]);
+  function delay(ms = 0) {
+    return data => new Promise(resolve => {
+      setTimeout(() => {
+        resolve(data);
+      }, ms);
+    });
+  }
+
+  function assertDeepEqualExcept(ds1, ds2, ignore, sort) {
+    function removeIgnore(ds) {
+      let dsc = clone(ds);
+      dsc = omit(dsc, ignore);
+      for (const i in dsc) {
+        if (typeof dsc[i] === 'object') {
+          dsc[i] = removeIgnore(dsc[i]);
+        }
       }
+      return dsc;
     }
-    return dsc;
-  }
 
-  assert.isArray(ds1);
-  assert.isArray(ds2);
-  assert.isArray(ignore);
-  assert.equal(ds1.length, ds2.length);
-  ds1 = ds1.sort(sort);
-  ds2 = ds2.sort(sort);
-  for (let i = 0; i < ds1.length; i++) {
-    const dsi1 = removeIgnore(ds1[i]);
-    const dsi2 = removeIgnore(ds2[i]);
-    assert.deepEqual(dsi1, dsi2);
+    assert.isArray(ds1);
+    assert.isArray(ds2);
+    assert.isArray(ignore);
+    assert.equal(ds1.length, ds2.length);
+    ds1 = ds1.sort(sort);
+    ds2 = ds2.sort(sort);
+    for (let i = 0; i < ds1.length; i++) {
+      const dsi1 = removeIgnore(ds1[i]);
+      const dsi2 = removeIgnore(ds2[i]);
+      assert.deepEqual(dsi1, dsi2);
+    }
   }
-}

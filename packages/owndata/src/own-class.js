@@ -5,12 +5,11 @@ import { sorter, select, AdapterService } from '@feathersjs/adapter-commons';
 import { genUuid, to } from '@feathersjs-offline/common';
 import sift from 'sift';
 import ls from 'feathers-localstorage';
-import MutateStore from './mutate-store';
 import snapshot from '@feathersjs-offline/snapshot';
 
-const debug = require('debug')('@feathersjs-offline:owndata:service-base');
+const debug = require('debug')('@feathersjs-offline:owndata:ownnet:service-base');
 
-if (typeof localStorage === 'undefined' || localStorage === null) {
+if (typeof localStorage === 'undefined' /* || localStorage === null */) {
   debug('Simulating localStorage...');
   let LocalStorage = require('node-localstorage').LocalStorage;
   global.localStorage = new LocalStorage('./.scratch');
@@ -24,15 +23,11 @@ const defaultOptions = {
   'store': null,
   'storage': null,
   'useShortUuid': true,
-  'trackMutations': true,
-  'publication': null,
-  'subscriber': () => {},
   'adapterTest': false,
   // 'multi': false,
   // 'paginate': false,
   'matcher': sift,
   sorter,
-  query: () => {return {};},
   'fixedName': false
   };
 
@@ -60,14 +55,14 @@ const attrStrip = (...attr) => {
 }
 
 class OwnClass extends AdapterService {
-  constructor (opts = {}) {
+  constructor (opts) {
     let newOpts = Object.assign({}, defaultOptions, opts);
 
-    debug(`Constructor started, newOpts = ${JSON.stringify(newOpts)}, publication = ${newOpts.publication===null?'null':newOpts.publication.toString()}, subscriber = ${newOpts.subscriber===null?'null':newOpts.subscriber.toString()}`);
+    debug(`Constructor started, newOpts = ${JSON.stringify(newOpts)}`);
     super(newOpts);
 
     this.wrapperOptions = Object.assign({}, newOpts, this.options);
-    debug(`Constructor ended, options = ${JSON.stringify(this.options)}, publication = ${this.options.publication===null?'null':this.options.publication.toString()}, subscriber = ${this.options.subscriber===null?'null':this.options.subscriber.toString()}`);
+    debug(`Constructor ended, options = ${JSON.stringify(this.options)}`);
 
     this.type = 'own-class';
 
@@ -75,12 +70,17 @@ class OwnClass extends AdapterService {
     return this;
   }
 
-  async _setup (app, path) {
+  async _setup (app, path) {  // This will be removed for future versions of Feathers
+    debug(`_SetUp('${path}') started`);
+    this.setup(app, path);
+  }
+
+  async setup (app, path) {
     debug(`SetUp('${path}') started`);
-    if (!this._setup) { // Assure we only run setup once
-      return;
-    }
-    this._setup = true;
+    // if (!this._setup) { // Assure we only run setup once
+    //   return;
+    // }
+    // this._setup = true;
 
     this.options = this.wrapperOptions;
 
@@ -137,39 +137,6 @@ class OwnClass extends AdapterService {
     // Make sure we always select the key (id) in our results
     this._select = (params, ...others) => (res) => { return select(params, ...others, self.id)(res) }
 
-    // Do we care about tracking the mutations in the old-fashioned way? (Let's us use the many test cases already in place)
-    // Let's prepare the pub/sub system
-    this._eventEmitter = new EventEmitter();
-
-    this._publication = this.options.publication;
-    if (this._publication && typeof this._publication !== 'function')
-        throw new errors.BadRequest(`option 'publication' must be a function or 'null'!`);
-
-    this._subscriber = this.options.subscriber;
-    if (typeof this._subscriber !== 'function')
-      throw new errors.BadRequest(`option 'subscriber' must be a function!`);
-
-    if (this.options.trackMutations) {
-      this._mutateStore = new MutateStore({ publication: this._publication, subscriber: this._subscriber, emitter: this._eventEmitter.emit.bind(this), id: this.id });
-    }
-    else {
-      this._mutateStore = { mutate: (event, data, params) => { return data }, publication: null, subscriber: () => { } };
-    }
-
-    this._listener = eventName => remoteRecord => this._mutateStore.mutate(
-      eventName, remoteRecord, 0
-    );
-
-    this._eventListeners = {
-      created: this._listener('created'),
-      updated: this._listener('updated'),
-      patched: this._listener('patched'),
-      removed: this._listener('removed')
-    };
-
-    this.emit = this._eventEmitter.emit;
-    this.on = this._eventEmitter.on;
-
     // Initialize the service wrapper
     this.listening = false;
     this.aIP = 0; // Our semaphore for internal processing
@@ -183,8 +150,6 @@ class OwnClass extends AdapterService {
     if (!(this.remoteService instanceof AdapterService)) {
       this._listenOptions();
     }
-
-    this.addListeners();
 
     debug('  Done.');
   }
@@ -222,6 +187,11 @@ class OwnClass extends AdapterService {
 
   async get (id, params) {
     debug(`Calling get(${JSON.stringify(id)}, ${JSON.stringify(params)}})`);
+    return this._get(id, params);
+  }
+
+  async _get (id, params) {
+    debug(`Calling _get(${JSON.stringify(id)}, ${JSON.stringify(params)}})`);
     return await this.localService.get(id, params)
       .then(this._strip)
       .then(this._select(params))
@@ -230,26 +200,40 @@ class OwnClass extends AdapterService {
 
   async find (params) {
     debug(`Calling find(${JSON.stringify(params)}})`);
+    return this._find(params);
+  }
+
+  async _find (params) {
+    debug(`Calling _find(${JSON.stringify(params)}})`);
     return this.localService.find(params)
       .then(this._strip)
       .then(this._select(params));
   };
 
-  async create (data, params, ts = 0) {
-    debug(`Calling create(${JSON.stringify(data)}, ${JSON.stringify(params)}})`);
+  async create(data, params) {
+    debug(`Calling create(${JSON.stringify(data)}, ${JSON.stringify(params)})`);
+    if (Array.isArray(data) && !this.allowsMulti('create')) {
+      return Promise.reject(new errors.MethodNotAllowed('Creating multiple without option \'multi\' set'));
+    }
+
+    return this._create(data, params);
+  }
+
+  async _create (data, params, ts = 0) {
+    debug(`Calling _create(${JSON.stringify(data)}, ${JSON.stringify(params)}, ${ts})`);
     let self = this;
     if (Array.isArray(data)) {
       const multi = this.allowsMulti('create');
       if (!multi) {
-        throw new errors.MethodNotAllowed('Creating multiple without option \'multi\' set');
+        return Promise.reject(new errors.MethodNotAllowed('Creating multiple without option \'multi\' set'));
       }
 
-      ts = new Date();
-      return Promise.all(data.map(current => self.create(current, params, ts)));
+      let timestamp = new Date();
+      // In future version we will user Promise.allSettled() instead...
+      return Promise.all(data.map(current => self._create(current, params, timestamp)));
     }
-    else if (ts === 0) {
-      ts = new Date();
-    }
+
+    ts = ts || new Date();
 
     let newData = shallowClone(data);
 
@@ -273,7 +257,6 @@ class OwnClass extends AdapterService {
     }
 
     // We apply optimistic mutation
-    newData = this._mutateStore.mutate('created', newData, 1);
     let newParams = shallowClone(params);
     this.disallowInternalProcessing();
     let queueId = await this._addQueuedEvent('create', newData, shallowClone(newData), cleanUpParams(params));
@@ -281,10 +264,10 @@ class OwnClass extends AdapterService {
     // Start actual mutation on remote service
     [err, res] = await to(this.localService.create(newData, shallowClone(params)));
     if (!err) {
+//      console.log(`remote.create(${JSON.stringify(res)}, ${JSON.stringify(params)}})`);
       this.remoteService.create(res, shallowClone(params))
         .then(async rres => {
-          self._mutateStore.mutate('created', rres, 0);
-          await self._removeQueuedEvent('create', queueId, newData, newData.updatedAt);
+          await self._removeQueuedEvent('create1', queueId, newData, newData.updatedAt);
           await self.localService.patch(rres[self.id], rres)
             .catch(async err => {
               // We have to test for a possible race condition
@@ -302,20 +285,27 @@ class OwnClass extends AdapterService {
           await self._processQueuedEvents();
         })
         .catch(async rerr => {
-          if (!(rerr.name === 'Timeout' && rerr.type === 'FeathersError')) {
+          if (rerr.name !== 'Timeout') {
             // Let's silently ignore missing connection to server -
             // we'll catch-up next time we get a connection
             // In all other cases do the following:
-            self._mutateStore.mutate('removed', newData, 2);
-            await self._removeQueuedEvent('create', queueId, newData, newData.updatedAt);
+            try {
+              await self._removeQueuedEvent('create2', queueId, rerr.message/*newData*/, newData.updatedAt);
+          } catch (error) {
+            console.error(`Error _removeQueuedEvent (create2) error=${error.name}, ${error.message}`);
+          }
+          try {
             await self.localService.remove(res[self.id], params);
+          } catch (error) {
+            console.error(`Error localService.remove2 (create2) error=${error.name}, ${error.message}`);
+          }
           }
 
           self.allowInternalProcessing();
         });
     }
     else {
-      await this._removeQueuedEvent('create', queueId, newData, newData.updatedAt);
+      await this._removeQueuedEvent('create3', queueId, newData, newData.updatedAt);
       this.allowInternalProcessing();
       throw err;
     }
@@ -325,27 +315,42 @@ class OwnClass extends AdapterService {
       .then(this._select(params));
   }
 
-  async update (id, data, params = {}) {
+  async update (id, data, params) {
     debug(`Calling update(${id}, ${JSON.stringify(data)}, ${JSON.stringify(params)}})`);
-    let self = this;
-    let [err, res] = await to(this.localService.get(id));
-    if (!(res && res !== {})) {
-      throw new errors.NotFound(`Trying to update non-existing ${this.id}=${id}. (${this.type}) err=${JSON.stringify(err)}`);
+    if (id === null || Array.isArray(data)) {
+      return Promise.reject(new errors.BadRequest(
+        `You can not replace multiple instances. Did you mean 'patch'?`
+      ));
     }
 
-    // We do not allow the client to update the onServerAt attribute
-    if (res.onServerAt)
-      delete res.onServerAt;
+    return this._update(id, data, params);
+  }
+
+  async _update (id, data, params = {}) {
+    debug(`Calling _update(${id}, ${JSON.stringify(data)}, ${JSON.stringify(params)}})`);
+    let self = this;
+
+    if (id === null || Array.isArray(data)) {
+      return Promise.reject(new errors.BadRequest(
+        `You can not replace multiple instances. Did you mean 'patch'?`
+      ));
+    }
+
+    let [err, res] = await to(this.localService._get(id));
+    if (!(res && res !== {})) {
+      throw new errors.NotFound(`Trying to update non-existing ${this.id}=${id}. (${this.type}) err=${JSON.stringify(err.name)}`);
+    }
 
     // We don't want our uuid to change type if it can be coerced
     const beforeRecord = shallowClone(res);
     const beforeUuid = beforeRecord.uuid;
+
     let newData = shallowClone(data);
     newData.uuid = beforeUuid; // eslint-disable-line
     newData.updatedAt = new Date();
+    newData.onServerAt = 0;
 
     // Optimistic mutation
-    newData = this._mutateStore.mutate('updated', newData, 1);
     this.disallowInternalProcessing();
     let queueId = await this._addQueuedEvent('update', newData, id, shallowClone(newData), cleanUpParams(params));
 
@@ -354,39 +359,37 @@ class OwnClass extends AdapterService {
     if (!err) {
       this.remoteService.update(id, res, shallowClone(params))
         .then(async rres => {
-          self._mutateStore.mutate('updated', rres, 0);
-          await self._removeQueuedEvent('update', queueId, newData, res.updatedAt);
+          await self._removeQueuedEvent('update1', queueId, newData, res.updatedAt);
           await self.localService.update(res[self.id], res, shallowClone(params))
             .catch(async err => {
-              // We have to test for a possible race condition
-              let [lerr, lres] = await to( self.localService.get(id) );
-              // We have to test for a possible race condition
-              let [rerr, rres] = await to( self.remoteService.get(id) );
-              if (!lres && rres) {
-                // Something is very wrong
-                throw new errors.NotFound(`Update: id = '${id} not found on localService. Please report error!`);
-              }
+              // // We have to test for a possible race condition
+              // let [_lerr, lres] = await to( self.localService._get(id) );
+              // // We have to test for a possible race condition
+              // let [_rerr, rres] = await to( self.remoteService._get(id) );
+              // if (!lres && rres) {
+              //   // Something is very wrong
+              //   throw new errors.NotFound(`Update: id = '${id} not found on localService. Please report error!`);
+              // }
               // We have simply been overtaken by a remove request.
             });
           self.allowInternalProcessing();
           await self._processQueuedEvents();
         })
         .catch(async rerr => {
-          if (rerr.className === 'timeout' && rerr.name === 'Timeout') {
+          if (rerr.name === 'Timeout') {
             debug(`_update TIMEOUT: ${rerr.name}, ${rerr.message}`);
             // Let's silently ignore missing connection to server
             // We'll catch-up next time we get a connection
           } else {
             debug(`_update ERROR: ${rerr.name}, ${rerr.message}`);
-            self._mutateStore.mutate('updated', data, 2);
-            await self._removeQueuedEvent('update', queueId, newData, res.updatedAt);
+            await self._removeQueuedEvent('update2', queueId, newData, res.updatedAt);
             await self.localService.patch(id, beforeRecord);
           }
           self.allowInternalProcessing();
         });
     }
     else {
-      await this._removeQueuedEvent('update', queueId, newData, newData.updatedAt);
+      await this._removeQueuedEvent('update3', queueId, newData, newData.updatedAt);
       this.allowInternalProcessing();
       throw err;
     }
@@ -396,8 +399,17 @@ class OwnClass extends AdapterService {
       .then(this._select(params));
   }
 
-  async patch (id, data, params = {}) {
+  async patch (id, data, params) {
     debug(`Calling patch(${id}, ${JSON.stringify(data)}, ${JSON.stringify(params)}})`);
+    if (id === null && !this.allowsMulti('patch')) {
+      return Promise.reject(new errors.MethodNotAllowed(`Can not patch multiple entries`));
+    }
+
+    return this._patch(id, data, params);
+  }
+
+  async _patch (id, data, params = {}, ts = 0) {
+    debug(`Calling _patch(${id}, ${JSON.stringify(data)}, ${JSON.stringify(params)}})`);
     let self = this;
     if (id === null) {
       const multi = this.allowsMulti('patch');
@@ -411,25 +423,30 @@ class OwnClass extends AdapterService {
           res = [ res ];
         }
 
+        let timestamp = new Date().toISOString();
         return Promise.all(res.map(
-          current => self.patch(current[this.id], data, params))
+          current =>
+{
+debug(`patch current = ${JSON.stringify(current)}`);
+            return self._patch(current[this.id], data, params, timestamp)
+}
+        )
         );
       });
     }
 
-    let [err, res] = await to(this.localService.get(id));
+    ts = ts || new Date();
+
+    let [err, res] = await to(this.localService._get(id));
     if (!(res && res !== {})) {
       throw err;
     }
 
-    // We do not allow the client to patch the onServerAt attribute
-    if (res.onServerAt)
-      delete res.onServerAt;
-
     // Optimistic mutation
     const beforeRecord = shallowClone(res);
-    const afterRecord = Object.assign({}, beforeRecord, data);
-    const newData = this._mutateStore.mutate('patched', afterRecord, 1);
+    const newData = Object.assign({}, beforeRecord, data);
+    newData.onServerAt = 0;
+    newData.updatedAt = ts;
     this.disallowInternalProcessing();
     const queueId = await this._addQueuedEvent('patch', newData, id, shallowClone(newData), cleanUpParams(params));
 
@@ -438,38 +455,51 @@ class OwnClass extends AdapterService {
     if (!err) {
       this.remoteService.patch(id, res, shallowClone(params))
         .then(async rres => {
-          self._mutateStore.mutate('patched', rres, 0);
-          await self._removeQueuedEvent('patch', queueId, newData, res.updatedAt);
-          await self.localService.patch(id, rres, shallowClone(params))
+          await self._removeQueuedEvent('patch1', queueId, newData, res.updatedAt);
+          try {
+            await self.localService.patch(id, rres, shallowClone(params))
             .catch(async err => {
-              // We have to test for a possible race condition
-              let [lerr, lres] = await to( self.localService.get(id) );
-              let [rerr, rres] = await to( self.remoteService.get(id) );
-              if (!lres && rres) {
-                // Something is very wrong
-                throw new errors.NotFound(`Patch: id = '${id} not found on localService. Please report error!`);
-              }
+              // // We have to test for a possible race condition
+              // let [_lerr, lres] = await to( self.localService._get(id) );
+              // let [_rerr, rres] = await to( self.remoteService._get(id) );
+              // if (!lres && rres) {
+              //   // Something is very wrong
+              //   let lerr = _lerr || {name:'lerr', message:'.'};
+              //   let rerr = _rerr || {name:'rerr', message:'.'};
+              //   throw new errors.NotFound(`Patch: ${this.id} = '${id}' not found on localService. Please report error! \n${err.name} ${err.message}\n${lerr.name} ${lerr.message}\n${rerr.name} ${rerr.message}`);
+              // }
               // We have simply been overtaken by a remove request.
             });
+          } catch (error) {
+            console.error(`Error localService.patch ${this.id}=${id}, error=${error.name}, ${error.message}`);
+            console.error(`localService.getEntries = ${JSON.stringify(await self.localService.getEntries())}`);
+          }
           self.allowInternalProcessing();
           await self._processQueuedEvents();
-        })
+      })
         .catch(async rerr => {
-          if (rerr.className === 'timeout' && rerr.name === 'Timeout') {
+          if (rerr.name === 'Timeout') {
             debug(`_patch TIMEOUT: ${rerr.name}, ${rerr.message}`);
             // Let's silently ignore missing connection to server
             // We'll catch-up next time we get a connection
           } else {
             debug(`_patch ERROR: ${rerr.name}, ${rerr.message}`);
-            self._mutateStore.mutate('updated', afterRecord, 2);
-            await self._removeQueuedEvent('patch', queueId, newData, res.updatedAt);
-            await self.localService.patch(id, beforeRecord);
-          }
+            try {
+              await self._removeQueuedEvent('patch2', queueId, newData, res.updatedAt);
+            } catch (error) {
+              console.error(`Error _removeQueuedEvent2 error=${error.name}, ${error.message}`);
+            }
+            try {
+              await self.localService.patch(id, beforeRecord);
+              } catch (error) {
+                console.error(`Error localService.patch2 error=${error.name}, ${error.message}`);
+              }
+                }
           self.allowInternalProcessing();
         });
     }
     else {
-      await this._removeQueuedEvent('patch', queueId, newData, newData.updatedAt);
+      await this._removeQueuedEvent('patch3', queueId, newData, newData.updatedAt);
       this.allowInternalProcessing();
       throw err;
     }
@@ -479,8 +509,17 @@ class OwnClass extends AdapterService {
       .then(this._select(params));
   }
 
-  async remove (id, params = {}) {
+  async remove (id, params) {
     debug(`Calling remove(${id}, ${JSON.stringify(params)}})`);
+    if (id === null && !this.allowsMulti('remove')) {
+      return Promise.reject(new errors.MethodNotAllowed(`Can not remove multiple entries`));
+    }
+
+    return this._remove(id, params);
+  }
+
+  async _remove (id, params = {}) {
+    debug(`Calling _remove(${id}, ${JSON.stringify(params)}})`);
     let self = this;
 
     if (id === null) {
@@ -495,19 +534,18 @@ class OwnClass extends AdapterService {
         }
 
         return Promise.all(res.map(
-          current => self.remove(current[this.id], params))
+          current => self._remove(current[this.id], params))
         );
       });
     }
 
-    let [err, res] = await to(this.localService.get(id));
+    let [err, res] = await to(this.localService._get(id));
     if (!(res && res !== {})) {
       throw new errors.BadRequest(`Trying to remove non-existing ${this.id}=${id}. (${this.type}) err=${JSON.stringify(err)}, res=${JSON.stringify(res)}`);
     }
 
     // Optimistic mutation
     const beforeRecord = shallowClone(res);
-    const oldData = this._mutateStore.mutate('removed', beforeRecord, 1);
     this.disallowInternalProcessing();
     const queueId = await this._addQueuedEvent('remove', beforeRecord, id, cleanUpParams(params));
 
@@ -516,13 +554,12 @@ class OwnClass extends AdapterService {
     if (!err) {
       this.remoteService.remove(id, shallowClone(params))
         .then(async rres => {
-          self._mutateStore.mutate('removed', rres, 0);
-          await to(self._removeQueuedEvent('remove', queueId, beforeRecord, null));
+          await to(self._removeQueuedEvent('remove1', queueId, beforeRecord, null));
           self.allowInternalProcessing();
           await self._processQueuedEvents();
         })
         .catch(async rerr => {
-          if (rerr.className === 'timeout' && rerr.name === 'Timeout') {
+          if (rerr.name === 'Timeout') {
             debug(`_remove TIMEOUT: ${rerr.name}, ${rerr.message}`);
           } else {
             debug(`_remove ERROR: ${rerr.name}, ${rerr.message}`);
@@ -532,49 +569,22 @@ class OwnClass extends AdapterService {
             } else {
               // We have to restore the record to  the local DB
               await to(self.localService.create(beforeRecord, null));
-              self._mutateStore.mutate('created', beforeRecord, 2);
-              await self._removeQueuedEvent('remove', queueId, beforeRecord, null);
+              await self._removeQueuedEvent('remove2', queueId, beforeRecord, null);
             }
           }
           self.allowInternalProcessing();
         });
     }
     else {
-      await this._removeQueuedEvent('remove', queueId, beforeRecord, null);
+      await this._removeQueuedEvent('remove3', queueId, beforeRecord, null);
       this.allowInternalProcessing();
       throw err;
     }
 
-    return Promise.resolve(oldData)
+    return Promise.resolve(beforeRecord)
       .then(this._strip)
       .then(this._select(params));
   }
-
-  // Necessary for adapterTests vvv
-  async _get (id) {
-    throw new errors.NotImplemented(`${this.type}: _get() not implemented`);
-  }
-
-  async _find (params) {
-    throw new errors.NotImplemented(`${this.type}: _find() not implemented`);
-  }
-
-  async _create (data, params) {
-    throw new errors.NotImplemented(`${this.type}: _create() not implemented`);
-  }
-
-  async _update (id, data, params) {
-    throw new errors.NotImplemented(`${this.type}: _update() not implemented`);
-  }
-
-  async _patch (id, data, params) {
-    throw new errors.NotImplemented(`${this.type}: _patch() not implemented`);
-  }
-
-  async _remove (id, params) {
-    throw new errors.NotImplemented(`${this.type}: _remove() not implemented`);
-  }
-  // Necessary for adapterTests ^^^
 
 
   // Allow access to our internal services (for application hooks and the demo). Use with care!
@@ -627,72 +637,30 @@ class OwnClass extends AdapterService {
     debug('addQueuedEvent entered');
     let [err, res] = await to(this.localQueue.create({ eventName, record: localRecord, arg1, arg2, arg3 }));
     debug(`addQueuedEvent added: ${JSON.stringify(res)}`);
-    return res.id;
+    return Promise.resolve(res.id);
   }
 
   async _removeQueuedEvent (eventName, id, localRecord, updatedAt) {
     debug('removeQueuedEvent entered');
 
-    let [err, res] = await to(this.localQueue.remove(id));
-    if (!err) {
-      debug(`removeQueuedEvent removed: ${JSON.stringify(res)}`);
-    } else {
-      console.log(`*** ERROR: _removedQueuedEvent: id=${id} eventName='${eventName}', localRecord=${JSON.stringify(localRecord)}, err.name =${err.name}, err.message=${err.message}`);
-    }
+    return Promise.resolve(this.localQueue.remove(id))
+      .then(res => {
+        debug(`removeQueuedEvent removed: ${JSON.stringify(res)}`);
+      })
+      .catch(err => {
+        console.log(`*** ERROR: _removedQueuedEvent: id=${id} eventName='${eventName}', localRecord=${JSON.stringify(localRecord)}, err.name =${err.name}, err.message=${err.message}`);
+      });
   }
 
   /**
    * This method must be implemented in own-data and own-net classes extending this class
    */
   async _processQueuedEvents () {
-    return Promise.resolve(true);
+    throw new errors.NotImplemented(`_processQueuedEvents must be implemented!!!`);
   }
 
   /* Event listening */
 
-  addListeners () {
-    debug('addListeners entered');
-    if (this.listening) return;
-
-    const service = this.remoteService;
-    const eventListeners = this._eventListeners;
-
-    Object.keys(eventListeners).forEach(ev => service.on(ev, eventListeners[ev]));
-
-    this.listening = true;
-
-    let self = this;
-    this.localService.getEntries()
-      .then(store => {
-        self.emit('events', store, { action: 'add-listeners' });
-        self._subscriber(store, { action: 'add-listeners' });
-      })
-      .catch(err => {
-        console.trace('Trace from add-listeners:');
-        throw new Error(`add-listeners: Bad result reading local service '${self.localServiceName}', err = ${err.name}, ${err.message}`);
-      })
-  };
-
-  removeListeners () {
-    debug('removeListeners entered');
-    if (this.listening) {
-      const service = this.remoteService;
-      const eventListeners = this._eventListeners;
-
-      Object.keys(eventListeners).forEach(ev => service.removeListener(ev, eventListeners[ev]));
-
-      this.listening = false;
-      let self = this;
-      this.localService.getEntries()
-        .then(store => {
-          self.emit('events', store, { action: 'remove-listeners' });
-          self._subscriber(store, { action: 'remove-listeners' });
-        })
-        .catch(err => {
-          throw new Error(`remove-listeners: Bad result reading local service '${self.localServiceName}', err = ${err.name}, ${err.message}`);
-        })
-      }
-  }
 
   /* Synchronization */
 
@@ -774,11 +742,6 @@ class OwnClass extends AdapterService {
         });
       };
 
-    if (this.options.trackMutations) {
-      let data = await this.getEntries();
-      self.emit('events', data, { action: 'snapshot' });
-    }
-
     return result;
   }
 
@@ -789,11 +752,10 @@ class OwnClass extends AdapterService {
    * @returns (object) The relevant options for snapshot().
    */
   async _getSyncOptions (bAll) {
-    let sQuery = this.query ? (this.query.query || {}) : {};
-    let query = Object.assign({}, sQuery, {offline:{_forceAll: true}, $sort: {onServerAt: 1}});
+    let query = Object.assign({}, {offline:{_forceAll: true}, $sort: {onServerAt: 1}});
     let ts = bAll ? new Date(0).toISOString() : this.syncedAt;
     let syncTS = ts < this.syncedAt ? ts : this.syncedAt;
-    // }
+
     if (syncTS !== new Date(ts)) {
       query.offline.onServerAt = new Date(syncTS);
     }

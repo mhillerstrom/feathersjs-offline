@@ -2,177 +2,142 @@ import { stripSlashes } from '@feathersjs/commons';
 import errors from '@feathersjs/errors';
 import { to } from '@feathersjs-offline/common';
 import OwnClass from '../../owndata/src/own-class';
+import { config } from 'process';
 
 const debug = require('debug')('@feathersjs-offline:ownnet:service-wrapper');
 
 class OwnnetClass extends OwnClass {
-  constructor (options = {}) {
+  constructor(options = {}) {
     debug(`Constructor started, opts = ${JSON.stringify(options)}`);
     super(options);
 
     this.type = 'own-net';
+    this.__forTestingOnly = super._processQueuedEvents;
 
     debug('  Done.');
     return this;
   }
 
-  async _processQueuedEvents () {
+  async _processQueuedEvents() {
+//    const debug = (...args) => console.log(...args);
     debug(`processQueuedEvents (${this.type}) entered (IPallowed=${this.internalProcessingAllowed()}, pQActive=${this.pQActive})`);
-    if(!this.internalProcessingAllowed() || this.pQActive) {
+    if (!this.internalProcessingAllowed() || this.pQActive) {
       // console.log(`processingQueuedEvents: internalProcessing (aIP=${this.aIP}), pQActive=${this.pQActive}`);
       return false;
     }
     this.pQActive = true;
 
-    let [err, store] = await to(this.localQueue.getEntries({query:{$sort: {uuid: 1, updatedAt: 1}}}));
-    if (!(store && store !== {})) {
+    let [err, store] = await to(this.localQueue.getEntries({ query: { $sort: { uuid: 1, updatedAt: 1 } } }));
+    if (!store || store === [] || store.length === 0) {
       this.pQActive = false;
       return true;
     }
 
-    this.removeListeners();
+    this.disallowInternalProcessing();
 
     debug(`  store = ${JSON.stringify(store)}`);
     let self = this;
 
+    let i = 0; // Current event
+    let j = 0; // Current first event
+    let ids = []; // The ids of the entries in localQueue currently accumulated
     let netOps = [];
-    let i = 0;
     let ev = [];
-    let event = 'patch';
-    let el = {};
-    let ids = [];
-    let stop = store.length === 0;
-    let uuid = !stop ? store[i].record.uuid : '';
-    if (!stop) {
-      do {
-        // For own-net we only send one accumulated record to the server - let's accumulate!
-        while (i < store.length && uuid === store[i].record.uuid) {
-          ev.push(store[i].eventName);
-          event = store[i].eventName==='remove' ? 'remove' : (event==='remove'? 'remove' : event) ;
-          el = Object.assign({}, el, store[i].record);
-          ids.push(store[i].id);
-          i++;
-        }
+    let stop = false;
 
-        // Decide whether to create, patch, or remove the document/item
-        let arg;
-        let arg1;
-        let [err, res] = await to(self.remoteService.get(el[this.id]));
-        if (err) {
-          if (err.name === 'Timeout' && err.type === 'FeathersError') {
-            // We probably lost connection... again
-            this.addListeners();
-            this.pQActive = false;
-            return false;
-          }
-          if ('update patch'.includes(event)) {
-            event = 'create';
-            arg = el;
-            arg1 = {};
-          }
-          else if (event === 'remove') {
-            arg = el[this.id];
-            arg1 = {}
-          }
-          else { // create
-            arg = el[this.id];
-            arg1 = el;
-          }
+    // For own-net we only send one accumulated record to the server - let's accumulate!
+    // Remember, we already have the accumulated record on file in localService.get, so all we
+    // need to do, it to look out for create and remove - the rest we remoteService.patch!
+    let eventName, record, arg1, arg2, arg3;
+    do {
+      while (i < store.length && store[i].record.uuid === store[j].record.uuid) {
+        ({ eventName, record, arg1, arg2, arg3 } = store[i]);
+        ids.push(store[i].id);
+        ev.push(eventName);
+        if (eventName === 'remove') {
+          netOps.push(_accEvent(this.id, eventName, record, arg1, arg2, arg3, ids));
+          ev = []; ids = [];
+          j = i + 1; // New start at next record
         }
-        else {
-          if (event == 'create') {
-            arg = el;
-            arg1 = {};
-          } else if (event === 'remove') {
-            arg = el[this.id];
-            arg1 = {};
-          } else {
-            arg = el[this.id];
-            arg1 = el;
-          }
-        }
-
-        // We have accumulated all for uuid - save for later execution
-        netOps.push({event, el, arg, arg1, ids, ev});
-
-        // Any more work to do?
+        i++; // get next possible record
+      }
+      if (ids.length) {
+                          try{
+        let res, err;
+        if (store[j].eventName !== 'create')
+          [err, res] = await to(self.localService.get(store[j].record[this.id]));
+        else
+          res = store[j].record;
+        let action = ev.includes('create') ? 'create' : 'patch';
+        netOps.push(_accEvent(this.id, action, res, arg1, arg2, arg3, ids));
+      } catch (err) {
+        console.error(`******* ERROR : ${err.name}, ${err.message} i=${i}, j=${j}, store.length=${store.length}, store=${JSON.stringify(store[j].record)}`);
+      }
         if (i < store.length) {
-          // We have at least one more record to prepare
-          ev = [];
-          ev.push(store[i].eventName);
-          event = store[i].eventName==='remove' ? 'remove' : 'patch';
-          uuid = store[i].record.uuid;
-          el = Object.assign({}, store[i].record);
-          ids = [];
+          ev = [ store[i].eventName ];
+          ids = [ store[i].id ];
         }
-        else { // No, we are done preparing records
-          stop = true;
-        }
-        // i++;
-      } while (!stop);
+        j = i++; // New start at i and move to next record
+      }
+    } while (i < store.length);
 
-console.log(`netOps.length=${netOps.length}, stop=${stop}, store.length=${store.length}`);
-      // Now, send all necessary updates to the server
-      stop = false;
-      let result = await Promise.all(netOps.map(async op => {
-console.log(`>>> op = ${JSON.stringify(op)}`);
-        let {event, el, arg, arg1, ids, ev} = op;
-        let mdebug = `  remoteService['${event}'](${JSON.stringify(arg)}, ${JSON.stringify(arg1)})`;
-console.log(`>>> ${mdebug}`);
-        return await self.remoteService[event](arg, arg1)
-          .then(async res => {
-            console.log(`res=${JSON.stringify(res)}`);
-            return await self.localQueue.remove(null, {query: {id: {$in: ids}}})
-              .then(async qres => {
-                console.log(`qres=${JSON.stringify(qres)}`);
-                if (event !== 'remove') {
-                  return await self.localService.patch(res[self.id], res)
-                    .catch(err => {
-                      console.log(`err=${err.name}, ${err.message}`);
-                      debug(mdebug);
-                      debug(`  localService.patch(${JSON.stringify(res[self.id])}, ${JSON.stringify(res)})`);
-                      debug(`  ev = ${JSON.stringify(ev)}`);
-                      return false
-                    })
-                }
-                else
-                  return true;
-              })
-              .catch(err => {
-                console.log(`err2=${err.name}, ${err.message}`);
-                return false;
-              });
-          })
-          .catch(err => {
-            console.log(`err3=${err.name}, ${err.message}`);
-            if (err.name === 'Timeout' && err.type === 'FeathersError') {
-              // We silently accept - we probably lost connection
-            }
-            else {
-              if (event === 'remove' && el.onServerAt === 0) {
-                // This record has probably never been on server (=remoteService), so we silently ignore the error
+//    console.log(`netOps = ${JSON.stringify(netOps)}`);
+
+    // Now, send all necessary updates to the remote service (server)
+    stop = false;
+    // In future version we will user Promise.allSettled() instead...
+    let result = await Promise.all(netOps.map(async op => {
+      let { event, el, arg1, arg2, arg3, ids } = op;
+      let mdebug = `  remoteService['${event}'](${JSON.stringify(arg1)}, ${JSON.stringify(arg2)}, ${JSON.stringify(arg3)})`;
+//      console.log(mdebug);
+      return await self.remoteService[event](arg1, arg2, arg3)
+        .then(async res => {
+          return await self.localQueue.remove(null, { query: { id: { $in: ids } } })
+            .then(async qres => {
+              if (event !== 'remove') {
+                return await self.localService.patch(res[self.id], res)
+                  .catch(err => {
+                    debug(mdebug);
+                    debug(`  localService.patch(${JSON.stringify(res[self.id])}, ${JSON.stringify(res)})`);
+                    debug(`  ev = ${JSON.stringify(ev)}`);
+                    return true;
+                  })
+                  .then(() => { return false; })
               }
-              else {
-                return true;
-              }
-            }
+
+              return false;
+            })
+            .catch(err => {
+              console.log(`err2=${err.name}, ${err.message}`);
+              return false;
+            });
+        })
+        .catch(err => {
+          // if (err.name === 'Timeout' && err.type === 'FeathersError') {
+          //   // We silently accept - we probably lost connection
+          // }
+          // else {
+          //   if (event === 'remove' && el.onServerAt === 0) {
+          //     // This record has probably never been on server (=remoteService), so we silently ignore the error
+          //   }
+          //   else {
+          if (err.name !== 'Timeout' && event !== 'remove' && el.onServerAt !== 0) {
             return false;
-          });
-      }));
-console.log(`result=${JSON.stringify(result)}`);
-      stop = result.reduce((pv,cv,ci,arr) => stop || arr[ci]);
-    }
+          }
+          // }
+          return false;
+        });
+    }));
+    // stop = result.reduce((pv, cv, ci, arr) => stop || arr[ci]);
 
-    this.addListeners();
+    this.allowInternalProcessing();
     this.pQActive = false;
 
-    return !stop;
-  }
+    return true;
+    }
 
-};
-
-
-function init (options) {
+}
+function init(options) {
   return new OwnnetClass(options);
 }
 
@@ -180,7 +145,7 @@ let Ownnet = init;
 
 
 /**
- * A ownnewWrapper is a CLIENT adapter wrapping for FeathersJS services extending them to
+ * A ownnetWrapper is a CLIENT adapter wrapping for FeathersJS services extending them to
  * implement the offline own-net principle (**LINK-TO-DOC**).
  *
  * @example ```
@@ -201,9 +166,9 @@ let Ownnet = init;
  * @param {object} options The options for the serviceAdaptor AND the OwnnetWrapper
  *
  */
-function ownnetWrapper (app, path, options = {}) {
+function ownnetWrapper(app, path, options = {}) {
   debug(`OwnnetWrapper started on path '${path}'`)
-  if (!(app && app['version'] && app['service'] && app['services']) )
+  if (!(app && app['version'] && app['service'] && app['services']))
     throw new errors.Unavailable(`The FeathersJS app must be supplied as first argument`);
 
   let location = stripSlashes(path);
@@ -224,3 +189,20 @@ function ownnetWrapper (app, path, options = {}) {
 module.exports = { init, Ownnet, ownnetWrapper };
 
 init.Service = OwnnetClass;
+
+
+// Helper
+
+function _accEvent(idName, event, el, arg1, arg2, arg3, ids) {
+  let id = el[idName];
+  switch (event) {
+    case 'create':
+      return { event, el, arg1: el, arg2: {}, arg3: {}, ids };
+    case 'update':
+      return { event, el, arg1, arg2, arg3: {}, ids };
+    case 'patch':
+      return { event, el, arg1: id, arg2: el, arg3: {}, ids };
+    case 'remove':
+      return { event, el, arg1: id, arg2: {}, arg3: {}, ids };
+  }
+}

@@ -1,0 +1,51 @@
+{
+  "name": "feathersjs-offline-docs",
+  "description": "FeathersJS Offline documentation",
+  "version": "2.2.0",
+  "private": true,
+  "homepage": "https://github.com/feathersjs-offline/docs",
+  "main": "",
+  "keywords": [
+    "feathers",
+    "feathersjs-offline",
+    "feathersjs-offline-docs"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/feathersjs-offline/feathersjs-offline-docs.git"
+  },
+  "author": {
+    "name": "Michael Hillerström",
+    "email": "michael@hillerstrom.name",
+    "url": "https://github.com/mhillerstrom/feathersjs-offline-docs.com"
+  },
+  "contributors": [],
+  "bugs": {
+    "url": "https://github.com/mhillerstrom/feathersjs-offline/docs/issues"
+  },
+  "engines": {
+    "node": ">= 6.0.0"
+  },
+  "scripts": {
+    "build": "vuepress build",
+    "start": "vuepress dev",
+    "fa:build": "node node_modules/vuepress-plugin-font-awesome/index.js",
+    "netlify": "npm run build",
+    "validate-links": "node scripts/validate-links"
+  },
+  "directories": {},
+  "dependencies": {
+    "vuepress-plugin-font-awesome": "^1.90.6"
+  },
+  "devDependencies": {
+    "@dovyp/vuepress-plugin-clipboard-copy": "^1.0.0-alpha.7",
+    "remark": "^11.0.2",
+    "remark-validate-links": "^9.2.0",
+    "unified-engine": "^7.0.0",
+    "vfile-reporter": "^6.0.1",
+    "vue-tabs-component": "^1.5.0",
+    "vuepress": "^1.3.1",
+    "vuepress-plugin-tabs": "^0.3.0"
+  }
+}

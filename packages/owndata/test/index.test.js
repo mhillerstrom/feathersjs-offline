@@ -5,7 +5,7 @@ const errors = require('@feathersjs/errors');
 const adapterTests = require('@feathersjs/adapter-tests');
 const memory = require('feathers-memory');
 const { owndataWrapper } = require('../src');
-const MutateStore = require('../src/mutate-store').default;
+const { getEnabledCategories } = require('trace_events');
 
 let verbose = false;
 let app;
@@ -199,25 +199,6 @@ describe('Owndata-test - Wrapper specific functionality', () => {
   });
 
 
-  it('simulation hook throws error', () => {
-    app = feathers();
-    let path = newServicePath();
-    app.use(path, memory());
-    setUpHooks(app, 'CLIENT', path, true);
-    let service = app.service(path);
-
-    return async () => {
-      try {
-        await service.create({ id: 98, order: 98 }, { query: { _fail: true } });
-        expect(true).to.equal(false, 'hook throws an error');
-      } catch (error) {
-        expect(error.name).to.equal('Timeout', 'hook throws Timeout');
-      }
-      return true;
-    }
-  });
-
-
   it('set remote throws error', () => {
     app = feathers();
     let path = newServicePath();
@@ -236,6 +217,47 @@ describe('Owndata-test - Wrapper specific functionality', () => {
 
 })
 
+describe('Non _ functions throws exception', () => {
+  let service;
+
+  beforeEach(() => {
+    app = feathers();
+    let path = newServicePath();
+    app.use(path, memory());
+    owndataWrapper(app, path, {});
+    service = app.service(path);
+  });
+
+
+  it('update multi throws', async () => {
+    try {
+      await service.update(null, {b:3});
+    } catch(error) {
+        expect(error.name).to.equal('BadRequest', `${error.message}`);
+    }
+    try {
+      await service.update(0, [{b:3}, {b:2}]);
+    } catch(error) {
+        expect(error.name).to.equal('BadRequest', `${error.message}`);
+    }
+  });
+
+  it('patch multi throws', () => {
+    return service.patch(null, {b:2})
+      .catch(error => {
+        expect(error.name).to.equal('MethodNotAllowed', `${error.message}`);
+      });
+  });
+
+  it('remove multi throws', () => {
+    return service.remove(null)
+      .catch(error => {
+        expect(error.name).to.equal('MethodNotAllowed', `${error.message}`);
+      });
+  });
+
+});
+
 describe('_ functions throws exception', () => {
   let service;
 
@@ -252,32 +274,18 @@ describe('_ functions throws exception', () => {
     expect(typeof service._get).to.equal('function', '_get is not defined!');
   });
 
-  it('_get throws', () => {
-    return service._get(99)
-      .catch(error => {
-        expect(error.name).to.equal('NotImplemented', `${error.message}`);
-      });
-  });
-
   it('_find exists', () => {
     expect(typeof service._find).to.equal('function', '_find is not defined!');
-  });
-
-  it('_find throws', () => {
-    return service._find()
-      .catch(error => {
-        expect(error.name).to.equal('NotImplemented', `${error.message}`);
-      });
   });
 
   it('_create exists', () => {
     expect(typeof service._create).to.equal('function', '_create is not defined!');
   });
 
-  it('_create throws', () => {
-    return service._create({id:99})
+  it('_create multi throws', () => {
+    return service._create([{id:99}, {id:98}])
       .catch(error => {
-        expect(error.name).to.equal('NotImplemented', `${error.message}`);
+        expect(error.name).to.equal('MethodNotAllowed', `${error.message}`);
       });
   });
 
@@ -285,21 +293,27 @@ describe('_ functions throws exception', () => {
     expect(typeof service._update).to.equal('function', '_update is not defined!');
   });
 
-  it('_update throws', () => {
-    return service._update(99, {b:3})
-      .catch(error => {
-        expect(error.name).to.equal('NotImplemented', `${error.message}`);
-      });
+  it('_update multi throws', async () => {
+    try {
+      await service._update(null, {b:3});
+    } catch(error) {
+        expect(error.name).to.equal('BadRequest', `${error.message}`);
+    }
+    try {
+      await service._update(0, [{b:3}, {b:2}]);
+    } catch(error) {
+        expect(error.name).to.equal('BadRequest', `${error.message}`);
+    }
   });
 
   it('_patch exists', () => {
     expect(typeof service._patch).to.equal('function', '_patch is not defined!');
   });
 
-  it('_patch throws', () => {
-    return service._patch(99, {b:2})
+  it('_patch multi throws', () => {
+    return service._patch(null, {b:2})
       .catch(error => {
-        expect(error.name).to.equal('NotImplemented', `${error.message}`);
+        expect(error.name).to.equal('MethodNotAllowed', `${error.message}`);
       });
   });
 
@@ -307,71 +321,86 @@ describe('_ functions throws exception', () => {
     expect(typeof service._remove).to.equal('function', '_remove is not defined!');
   });
 
-  it('_remove throws', () => {
-    return service._remove(99)
+  it('_remove multi throws', () => {
+    return service._remove(null)
       .catch(error => {
-        expect(error.name).to.equal('NotImplemented', `${error.message}`);
+        expect(error.name).to.equal('MethodNotAllowed', `${error.message}`);
       });
   });
 
 });
 
-describe('mutator specific tests', () => {
-  it('MutateStore is a class', () => {
+
+describe('Misc quirky tests for high coverage', () => {
+  let service;
+  let path;
+
+  beforeEach(() => {
+    app = feathers();
+    path = newServicePath();
+    app.use(path, memory({multi: true}));
+    owndataWrapper(app, path, {});
+    service = app.service(path);
+  });
+
+
+  it('parent\'s _processQueuedEvents throws', async () => {
+
     try {
-      expect(typeof MutateStore).to.equal('function', 'MutateStore should be a class');
-      let mutator = new MutateStore({});
-      expect(typeof mutator).to.equal('object', 'Instance of MutateStore should be an object');
+      await service.__forTestingOnly();
+      expect(true).to.equal(false, `super._processQueuedEvents() unexpectedly did not throw NotImplemented`);
     } catch (error) {
-      expect(error.name).to.equal('BadRequest', 'MutateStore is no longer what is expected!');
-      return true;
+      expect(true).to.equal(true, `_processQueuedEvents() unexpectedly returned '${error.name}', '${error.message}'.`);
+      expect(error.name).to.equal('NotImplemented', `Unexpectedly threw '${error.name}', '${error.message}'.`);
     }
   });
 
-  it('publication is not a function', () => {
+  it('_processQueuedEvents works on empty queue', async () => {
     try {
-      let mutator = new MutateStore({ publication: {} });
-      expect(true).to.equal(false, 'This misconfigured publication should throw');
+      await service._processQueuedEvents();
     } catch (error) {
-      expect(error.name).to.equal('BadRequest', 'Misconfigured publication should throw BadRequest');
-      return true;
+      expect(false).to.equal(true, `_processQueuedEvents() unexpectedly returned '${error.name}', '${error.message}'.`);
     }
   });
 
-  it('subscriber is not a function', () => {
-    try {
-      let mutator = new MutateStore({ subscriber: null });
-      expect(true).to.equal(false, 'This misconfigured subscriber should throw');
-    } catch (error) {
-      expect(error.name).to.equal('BadRequest', 'Misconfigured subscriber should throw BadRequest');
-      return true;
-    }
-  });
+  it('_processQueuedEvents handles error from remote', async () => {
+    let data = [ {name: '1'}, {name: '2'}, {name: '3'} ];
+    setUpHooks('REMOTE', path, service.remote, true);
 
-  it('emitter is not a function', () => {
-    try {
-      let mutator = new MutateStore({ emitter: null });
-      expect(true).to.equal(false, 'This misconfigured emitter should throw');
-    } catch (error) {
-      expect(error.name).to.equal('BadRequest', 'Misconfigured emitter should throw BadRequest');
-      return true;
-    }
-  });
+    return service.create(data, {query:{_fail: true}})
+      .then(delay())
+      .then(created => {
+        expect(created.length).to.equal(3, 'Incorrect number of items created!');
+      })
+      .then(async () => {
+        try {
+          await service._processQueuedEvents();
+        } catch (error) {
+          expect(false).to.equal(true, `_processQueuedEvents() unexpectedly returned '${error.name}', '${error.message}'.`);
+        }
+      })
+    });
 
-  it('no sorter', () => {
-    try {
-      let mutator = new MutateStore({ sort: null });
-      let rec1 = mutator.mutate('created', { id: 1, name: 'first' }, 1);
-      let rec2 = mutator.mutate('created', { id: 1, name: 'first' }, 0);
-      expect(rec1).to.not.equal(rec2, 'The records should be different');
-      expect(rec1.record).to.equal(rec2.record, 'The rec.records should be equal');
-      expect(rec1.eventName).to.equal(rec2.eventName, 'The rec.eventName should be equal');
-    } catch (error) {
-      expect(error.name).to.equal('BadRequest', 'MutateStore is mot functioning as expected');
-      return true;
-    }
-  });
+    it('getEntries works', async () => {
+        let data = [ {name: '1'}, {name: '2'}, {name: '3'} ];
+
+        return service.create(data)
+          .then(delay())
+          .then(created => {
+            expect(created.length).to.equal(3, 'Incorrect number of items created!');
+            for (let i=0; i<3; i++)
+              expect(created[i].name).to.equal(data[i].name, `Expected created '${created[i].name}' to equal data '${data[i].name}, i=${i}'!`);
+          })
+          .then(() => service.getEntries())
+          .then(delay())
+          .then(entries => {
+            expect(entries.length).to.equal(3, 'Incorrect number of entries found!');
+            for (let i=0; i<3; i++)
+              expect(entries[i].name).to.equal(data[i].name, `Expected entries '${entries[i].name}' to equal data '${data[i].name}, i=${i}'!`);
+          })
+      });
 });
+
 
 
 
@@ -386,45 +415,43 @@ function delay(ms = 0) {
 }
 
 /**
- * This sets up a before an error hook for all functions for a given service. The hook
+ * This sets up a before (and error) hook for all functions for a given service. The hook
  * can simulate e.g. backend failure, network connection troubles, or timeout by supplying
  * ```{query: {_fail:true}}``` to the call options.
  * If `_fail` is false or the query is not supplied all this hook is bypassed.
  *
- * @param {object} app The application handle
  * @param {string} type Typically 'Remote' or 'Client'
  * @param {string} service The service to be hooked into
- * @param {boolean} allowFail Will we allow the usage of _fail and _timeout? (Default false)
+ * @param {boolean} allowFail Will we allow the usage of _fail? (Default false)
  */
-function setUpHooks(app, type, service, allowFail = false) {
-  if (verbose) console.log(`setUpHooks called: type=${type}, service=${service}, allowFail=${allowFail}`)
-  app.service(service).hooks({
+function setUpHooks(type, serviceName, service, allowFail = false) {
+
+  service.hooks({
     before: {
-      all: async context => {
+      all: [async context => {
         if (verbose) {
           const data = context.data ? `\n\tdata\t${JSON.stringify(context.data)}` : '';
           const params = context.params ? `\n\tparams\t${JSON.stringify(context.params)}` : '';
           console.log(`Before.all.hook ${type}.${context.method} called${data}${params}\n\tallowFail = ${allowFail}`);
         }
-        if (allowFail && context.params.query) {
-          if (context.params.query._fail) { // Passing in param _fail simulates errors
-            throw new errors.Timeout('Fail requested by user request - simulated timeout/missing connection');
+        if (context.params.query) {
+          if (allowFail) {
+            if (context.params.query._fail) { // Passing in param _fail simulates errors
+              throw new errors.Timeout('Fail requested by user request - simulated timeout/missing connection');
+            }
+            if (context.params.query._badFail) { // Passing in param _badFail simulates other error than timeout
+              throw new errors.GeneralError('Fail requested by user request - simulated general error');
+            }
           }
-          else {
-            // _fail was supplied but not true - remove it before continuing
-            delete context.params.query._fail;
-            return context;
-          }
+          // In case _fail/_badFail was supplied but not true and allowed - remove it before continuing
+          let newQuery = Object.assign({}, context.params.query);
+          delete newQuery._fail;
+          delete newQuery._badFail;
+          context.params.query = newQuery;
+          return context;
         }
       }
-
-    },
-    error: {
-      all: context => {
-        if (verbose) {
-          console.error(`Error.all.hook ${type}.${context.method} ERROR ${JSON.stringify(context.error)}`);
-        }
-      }
+      ]
     }
   });
 }

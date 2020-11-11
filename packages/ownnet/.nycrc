@@ -1,0 +1,8 @@
+{
+  "extends": "../../.nycrc",
+  "all": true,
+  "include": [
+    "src/**/*.js",
+    "packages/owndata/src/own-class.js"
+ ]
+}

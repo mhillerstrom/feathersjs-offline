@@ -62,14 +62,16 @@ describe('Ownnet-test - sync', () => {
     // Define client
     app = feathers();
     app.configure(socketioClient(socket));
-    app.use(path, Ownnet({ clearStorage: true }));
+    app.use(path, Ownnet({ }));
     service = app.service(path);
+    setUpHooks(rApp, 'CLIENT', path, false);
     // ['created', 'updated', 'patched', 'removed'].forEach(a => service.on(a, logAction('CLIENT', a)));
     // ['created', 'updated', 'patched', 'removed'].forEach(a => service.localService.on(a, logAction('LOCAL', a)));
     // ['created', 'updated', 'patched', 'removed'].forEach(a => service.localQueue.on(a, logAction('QUEUE', a)));
   });
 
   it('sync works', () => {
+    // We simulate missing connection
     return service.create({ id: 99, order: 99 }, { query: { _fail: true } })
       .then(data => {
         expect(typeof data.uuid).to.equal('string', 'uuid was added');
@@ -86,15 +88,10 @@ describe('Ownnet-test - sync', () => {
         expect(res.length).to.equal(2, '2 rows on remote');
       })
       .then(async () => {
-        let flag = null;
-        try {
-          await service.sync();
-          flag = true;
-        } catch (err) {
-          flag = false;
-        }
-        expect(true).to.equal(flag, '.sync() is a method');
+        expect(typeof service.sync).to.equal('function', '.sync() is a method');
       })
+      // Now the connection is back and we explicitly ask to perform a sync
+      .then(() => service.sync())
       .then(delay())
       .then(() => remote.find({ query: { $sort: {id: 1} } }))
       .then(delay())

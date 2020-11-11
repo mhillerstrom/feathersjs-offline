@@ -6,6 +6,7 @@
   "linterOptions": {
     "exclude": [
       "packages/common/lib/**",
+      "packages/docs/**",
       "packages/optimistic-mutation/lib/**",
       "packages/owndata/lib/**",
       "packages/ownnet/lib/**",
