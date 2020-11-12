@@ -27,7 +27,7 @@ All options available for the wrapped adapter can be used in addition to:
 
 ## Documentation
 
-You can read the docs [here](https://docs.feathersjs.com/guides/offline-first/readme.html).
+You can read the docs [here](https://auk.docs.feathersjs.com/guides/offline-first).
 
 For own-data implementations you must assure that the table (or collection) under control *must* implement both `uuid`, `updatedAt`, and `onServerAt` attributes.
 

@@ -111,7 +111,7 @@ For at more useful example see `@feathersjs-offline/example`.
 
 ## Documentation
 
-You can read the docs [here](https://docs.feathersjs.com/guides/offline-first/readme.html).
+You can read the docs [here](https://auk.docs.feathersjs.com/guides/offline-first).
 
 For own-net implementations you must assure that the table (or collection) under control *must* implement both `uuid`, `updatedAt`, and `onServerAt` attributes.
 

@@ -8,7 +8,7 @@
 [![lerna](https://img.shields.io/badge/maintained%20with-lerna-cc00ff.svg)](https://lerna.js.org/)
 
 > Common utilities for offline-first. ___*** For internal use only ***__
-
+[offline-first original docs](https://auk.docs.feathersjs.com/guides/offline-first)
 
 ## Installation
 

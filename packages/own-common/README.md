@@ -9,3 +9,4 @@
 
 >  Part of `@feathersjs-offline`. ___*** For internal use only ***__
 
+[offline original docs](https://auk.docs.feathersjs.com/guides/offline-first)
