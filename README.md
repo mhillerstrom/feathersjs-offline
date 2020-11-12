@@ -7,7 +7,7 @@
 [![Download Status](https://img.shields.io/npm/dm/feathersjs-offline.svg?style=flat-square)](https://www.npmjs.com/package/feathersjs-offline)
 [![lerna](https://img.shields.io/badge/maintained%20with-lerna-cc00ff.svg)](https://lerna.js.org/)
 
-> The full package for FeathersJS offline realtime support for own-data and own-net protocols as described in the docs [here](https://auk.docs.feathersjs.com/guides/offline-first).
+> The full package for FeathersJS offline realtime support for own-data and own-net protocols as described in the docs [here](https://auk.docs.feathersjs.com/guides/offline-first/readme.html#offline-first).
 
 
 ## Installation
