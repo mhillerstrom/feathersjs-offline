@@ -1,57 +1,45 @@
 {
-  "name": "@feathersjs-offline/ownnet",
-  "description": "Add offline own-net data access to FeathersJS app",
+  "name": "@feathersjs-offline/own-common",
   "version": "0.0.1",
-  "homepage": "https://feathersjs.com",
-  "main": "lib/index.js",
-  "types": "lib/",
+  "description": "Internal code for own-data and own-net realtime offline-first for FeathersJS",
+  "author": "Michael Hillerström <michael(at)hillerstrom.name>",
+  "homepage": "https://github.com/mhillerstrom/feathersjs-offline/tree/master/packages/own-common#readme",
   "keywords": [
     "feathers",
     "feathers-plugin",
     "offline-first",
     "realtime"
-
   ],
   "license": "MIT",
-  "funding": {
-    "type": "opencollective",
-    "url": "https://opencollective.com/feathers"
+  "main": "lib/own-common.js",
+  "directories": {
+    "lib": "lib",
+    "test": "test"
   },
+  "files": [
+    "lib"
+  ],
   "repository": {
     "type": "git",
-    "url": "git://github.com/mhillerstrom/feathersjs-offline/owndata.git"
-  },
-  "author": {
-    "name": "Michael Hillerstroem",
-    "email": "michael(at)hillerstrom.name",
-    "url": "https://github.com/mhillerstrom"
-  },
-  "contributors": [],
-  "bugs": {
-    "url": "https://github.com/mhillerstrom/feathersjs-offline/issues"
-  },
-  "engines": {
-    "node": ">= 10"
+    "url": "git+https://github.com/mhillerstrom/feathersjs-offline.git"
   },
   "scripts": {
     "prepublish": "npm run compile",
     "compile": "shx rm -rf lib/ && tsc",
     "test": "npm run compile && npm run mocha",
-    "mocha": "rm -rf ./.scratch; nyc mocha --config ../../.mocharc.ts.json --recursive test/**.test.ts test/**/*.test.ts test/**.test.js test/**/*.test.js"
+    "mocha": "rm -rf ./.scratch; nyc mocha --config ../../.mocharc.ts.json --recursive test/*"
   },
-  "directories": {
-    "lib": "lib"
-  },
-  "publishConfig": {
-    "access": "public"
+  "bugs": {
+    "url": "https://github.com/mhillerstrom/feathersjs-offline/issues"
   },
   "dependencies": {
     "@feathersjs-offline/common": "^0.0.1",
     "@feathersjs-offline/snapshot": "^0.0.1",
-    "@feathersjs-offline/own-common": "^0.0.1",
     "@feathersjs/adapter-commons": "^4.5.7",
-    "@feathersjs-offline/owndata": "^0.0.1",
-    "@feathersjs/commons": "^4.5.9"
+    "@feathersjs/commons": "^4.5.9",
+    "debug": "^4.2.0",
+    "feathers-localstorage": "^5.1.1",
+    "feathers-mongoose": "^8.3.1"
   },
   "devDependencies": {
     "@feathersjs-offline/server": "^0.0.1",

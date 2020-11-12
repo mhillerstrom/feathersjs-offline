@@ -1,19 +1,16 @@
 const { assert, expect } = require('chai');
-const feathers = require('@feathersjs/feathers');
-const { sorter } = require('@feathersjs/adapter-commons');
-const memory = require('feathers-memory');
-const errors = require('@feathersjs/errors');
-const { ownnetWrapper } = require('../src');
+const sorter = require('./sorter'); // require('@feathersjs/adapter-commons');
 const _ = require('lodash');
 const { omit, remove } = _;
+const { service2 } = require('./client-service');
+const setUpHooks = require('./setup-hooks');
+const failOnceHook = require('./fail-once-hook');
+
 
 const sampleLen = 5; // Size of test database (backend)
-const verbose = false; // Should the test be chatty?
 
-const desc = 'own-net'
-const serviceName = '/from';
+module.exports = (desc, _app, _errors, wrapper, serviceName, verbose) => {
 
-let app;
 let clientService;
 
 async function getRows(service) {
@@ -22,89 +19,18 @@ async function getRows(service) {
   return gRows;
 }
 
-/**
- * This sets up a before (and error) hook for all functions for a given service. The hook
- * can simulate e.g. backend failure, network connection troubles, or timeout by supplying
- * ```{query: {_fail:true}}``` to the call options.
- * If `_fail` is false or the query is not supplied all this hook is bypassed.
- *
- * @param {string} type Typically 'Remote' or 'Client'
- * @param {string} service The service to be hooked into
- * @param {boolean} allowFail Will we allow the usage of _fail? (Default false)
- */
-function setUpHooks(type, serviceName, service, allowFail = false) {
-
-  service.hooks({
-    before: {
-      all: [async context => {
-        if (verbose) {
-          const data = context.data ? `\n\tdata\t${JSON.stringify(context.data)}` : '';
-          const params = context.params ? `\n\tparams\t${JSON.stringify(context.params)}` : '';
-          console.log(`Before.all.hook ${type}.${context.method} called${data}${params}\n\tallowFail = ${allowFail}`);
-        }
-        if (context.params.query) {
-          if (allowFail) {
-            if (context.params.query._fail) { // Passing in param _fail simulates errors
-              throw new errors.Timeout('Fail requested by user request - simulated timeout/missing connection');
-            }
-            if (context.params.query._badFail) { // Passing in param _badFail simulates other error than timeout
-              throw new errors.GeneralError('Fail requested by user request - simulated general error');
-            }
-          }
-          // In case _fail/_badFail was supplied but not true and allowed - remove it before continuing
-          let newQuery = Object.assign({}, context.params.query);
-          delete newQuery._fail;
-          delete newQuery._badFail;
-          context.params.query = newQuery;
-          return context;
-        }
-      }
-      ]
-    }
-  });
-}
-
-/**
- * This sets up a before hook for a given method in a given service. The hook
- * will be triggered once and then it will be removed.
- *
- * @param {string} type Typically 'Remote' or 'Client'
- * @param {string} service The service to be hooked into
- * @param {string} service method to fail install hook for
- */
-function failOnceHook(type, serviceName, service, method) {
-  let triggered = false;
-
-  service.hooks({
-    before: {
-      [method]: [async context => {
-        if (!triggered) {
-         triggered = true;
-          throw new errors.GeneralError('Fail requested by user request - simulated general error');
-        }
-        return context;
-      }
-      ]
-    }
-  });
-}
 
 function setupServices() {
-  app = feathers();
-
-  app.use(serviceName, memory({ multi: true }));
-  ownnetWrapper(app, serviceName, {});
-  clientService = app.service(serviceName);
-  setUpHooks('REMOTE', serviceName, clientService.remote, true);
-  setUpHooks('CLIENT', serviceName, clientService.local, false);
+  clientService = service2(wrapper, serviceName);
+  setUpHooks('REMOTE', serviceName, clientService.remote, true, verbose);
+  setUpHooks('CLIENT', serviceName, clientService.local, false, verbose);
 
   return clientService;
 }
 
 describe(`${desc} - optimistic mutation`, () => {
   let data;
-  let replicator;
-  let eventSort = sorter({ action: 1, source: -1, 'record.id': 1, 'record.uuid': 1/*, 'record.updatedAt':1*/ });
+  let eventSort = sorter({ action: 1, source: -1, 'record.id': 1, 'record.uuid': 1 });
 
   beforeEach(() => {
     setupServices();
@@ -118,7 +44,7 @@ describe(`${desc} - optimistic mutation`, () => {
 
   describe('General availability', () => {
     it('is CommonJS compatible', () => {
-      assert.strictEqual(typeof ownnetWrapper, 'function');
+      assert.strictEqual(typeof wrapper, 'function');
     });
   });
 
@@ -151,12 +77,8 @@ describe(`${desc} - optimistic mutation`, () => {
         .then(delay())
     });
 
-    afterEach(() => {
-      clientService.removeAllListeners();
-    });
-
-    it('find works', () => {
-      return clientService.find({ query: { order: { $lt: 3 } } })
+    it('find works', async () => {
+      return await clientService.find({ query: { order: { $lt: 3 } } })
         .then(async result => {
           const records = await getRows(clientService.local);
           assertDeepEqualExcept(result, data.slice(0, 3), ['updatedAt', 'onServerAt', 'deletedAt']);
@@ -172,6 +94,21 @@ describe(`${desc} - optimistic mutation`, () => {
 
           assertDeepEqualExcept([result], [{ id: 0, uuid: 1000, order: 0 }], ['updatedAt', 'onServerAt']);
           assert.lengthOf(records, sampleLen);
+          assertDeepEqualExcept(records, data, ['updatedAt', 'onServerAt']);
+        })
+    });
+
+    it('create works', () => {
+      return clientService.create({ id: 99, uuid: 1099, order: 99 })
+        .then(delay())
+        .then(async result => {
+          const records = await getRows(clientService.local);
+
+          data[sampleLen] = { id: 99, uuid: 1099, order: 99 };
+
+          assertDeepEqualExcept([result], [{ id: 99, uuid: 1099, order: 99 }], ['updatedAt', 'onServerAt']);
+
+          assert.lengthOf(records, sampleLen + 1);
           assertDeepEqualExcept(records, data, ['updatedAt', 'onServerAt']);
         })
     });
@@ -196,35 +133,6 @@ describe(`${desc} - optimistic mutation`, () => {
       } catch (error) {
         assert.strictEqual(error.name, 'BadRequest');
       }
-    });
-
-    it('create adds missing uuid', () => {
-      return clientService.create({ id: 99, order: 99 })
-        .then(data => {
-          assert.isString(data.uuid);
-        })
-    });
-
-    it('create adds missing updatedAt', () => {
-      return clientService.create({ id: 99, order: 99 })
-        .then(data => {
-          assert.isString(data.updatedAt);
-        })
-    });
-
-    it('create works', () => {
-      return clientService.create({ id: 99, uuid: 1099, order: 99 })
-        .then(delay())
-        .then(async result => {
-          const records = await getRows(clientService.local);
-
-          data[sampleLen] = { id: 99, uuid: 1099, order: 99 };
-
-          assertDeepEqualExcept([result], [{ id: 99, uuid: 1099, order: 99 }], ['updatedAt', 'onServerAt']);
-
-          assert.lengthOf(records, sampleLen + 1);
-          assertDeepEqualExcept(records, data, ['updatedAt', 'onServerAt']);
-        })
     });
 
     it('update works - ignores onServerAt', () => {
@@ -273,13 +181,14 @@ describe(`${desc} - optimistic mutation`, () => {
           assertDeepEqualExcept([result], [{ id: 2, uuid: 1002, order: 2 }], ['updatedAt', 'onServerAt']);
           assert.lengthOf(records, sampleLen - 1);
           assertDeepEqualExcept(records, data, ['updatedAt', 'onServerAt']);
-       });
+        });
     });
   });
 
   describe('without publication, null id', () => {
 
     beforeEach(() => {
+
       return clientService.create(clone(data))
     });
 
@@ -341,7 +250,7 @@ describe(`${desc} - optimistic mutation`, () => {
 
           assert.lengthOf(records, sampleLen - 3);
           assertDeepEqualExcept(records, data, ['updatedAt', 'onServerAt']);
-       });
+        });
     });
   });
 
@@ -468,6 +377,8 @@ describe(`${desc} - optimistic mutation`, () => {
         .then(delay())
         .then(async () => {
           const records = await getRows(clientService.local);
+
+          assert.lengthOf(records, sampleLen - 1);
 
           // Remove uuid=1002 from sample data
           let newData = JSON.parse(JSON.stringify(data));
@@ -652,10 +563,10 @@ describe(`${desc} - optimistic mutation`, () => {
         // See changes after synchronization
         .then(() => getRows(clientService.remote))
         .then(delay())
-        .then(remoteRows => {
+        .then(afterRows => {
           // Make sure remote data has not changed but client-side has...
-          assert.lengthOf(remoteRows, sampleLen-1);
-          assertDeepEqualExcept(afterRows, remoteRows, ['updatedAt', 'onServerAt']);
+          assert.lengthOf(afterRows, sampleLen);
+          assertDeepEqualExcept(afterRows, beforeRows, ['updatedAt', 'onServerAt']);
         })
     });
   });
@@ -809,41 +720,44 @@ describe(`${desc} - optimistic mutation`, () => {
   });
 });
 
-// Helpers
 
-function clone(obj) {
-  return JSON.parse(JSON.stringify(obj));
-}
+  // Helpers
 
-function delay(ms = 0) {
-  return data => new Promise(resolve => {
-    setTimeout(() => {
-      resolve(data);
-    }, ms);
-  });
-}
+  function clone(obj) {
+    return JSON.parse(JSON.stringify(obj));
+  }
 
-function assertDeepEqualExcept(ds1, ds2, ignore, sort) {
-  function removeIgnore(ds) {
-    let dsc = clone(ds);
-    dsc = omit(dsc, ignore);
-    for (const i in dsc) {
-      if (typeof dsc[i] === 'object') {
-        dsc[i] = removeIgnore(dsc[i]);
+  function delay(ms = 0) {
+    return data => new Promise(resolve => {
+      setTimeout(() => {
+        resolve(data);
+      }, ms);
+    });
+  }
+
+  function assertDeepEqualExcept(ds1, ds2, ignore, sort) {
+    function removeIgnore(ds) {
+      let dsc = clone(ds);
+      dsc = omit(dsc, ignore);
+      for (const i in dsc) {
+        if (typeof dsc[i] === 'object') {
+          dsc[i] = removeIgnore(dsc[i]);
+        }
       }
+      return dsc;
     }
-    return dsc;
+
+    assert.isArray(ds1);
+    assert.isArray(ds2);
+    assert.isArray(ignore);
+    assert.equal(ds1.length, ds2.length);
+    ds1 = ds1.sort(sort);
+    ds2 = ds2.sort(sort);
+    for (let i = 0; i < ds1.length; i++) {
+      const dsi1 = removeIgnore(ds1[i]);
+      const dsi2 = removeIgnore(ds2[i]);
+      assert.deepEqual(dsi1, dsi2);
+    }
   }
 
-  assert.isArray(ds1);
-  assert.isArray(ds2);
-  assert.isArray(ignore);
-  assert.equal(ds1.length, ds2.length);
-  ds1 = ds1.sort(sort);
-  ds2 = ds2.sort(sort);
-  for (let i = 0; i < ds1.length; i++) {
-    const dsi1 = removeIgnore(ds1[i]);
-    const dsi2 = removeIgnore(ds2[i]);
-    assert.deepEqual(dsi1, dsi2);
-  }
 }

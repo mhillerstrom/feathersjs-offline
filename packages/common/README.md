@@ -7,7 +7,7 @@
 [![Download Status](https://img.shields.io/npm/dm/feathersjs-offline-common.svg?style=flat-square)](https://www.npmjs.com/package/feathersjs-offline-common)
 [![lerna](https://img.shields.io/badge/maintained%20with-lerna-cc00ff.svg)](https://lerna.js.org/)
 
-> Common utilities for offline-first.
+> Common utilities for offline-first. ___*** For internal use only ***__
 
 
 ## Installation

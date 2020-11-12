@@ -5,10 +5,12 @@
   "keywords": [
     "FeathersJS",
     "snapshot",
-    "offline",
-    "mobile"
+    "mobile",
+    "offline-first",
+    "realtime"
+
   ],
-  "author": "Michael Hillerström <michael@hillerstrom.name>",
+  "author": "Michael Hillerström <michael(at)hillerstrom.name>",
   "homepage": "https://github.com/mhillerstrom/feathersjs-offline/tree/master/packages/snapshot#readme",
   "license": "ISC",
   "main": "lib/index.js",

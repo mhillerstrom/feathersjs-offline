@@ -7,7 +7,9 @@
   "types": "lib/",
   "keywords": [
     "feathers",
-    "feathers-plugin"
+    "feathers-plugin",
+    "offline-first",
+    "realtime"
   ],
   "license": "MIT",
   "funding": {
@@ -20,7 +22,7 @@
   },
   "author": {
     "name": "Michael Hillerstroem",
-    "email": "michael@hillerstrom.name",
+    "email": "michael(at)hillerstrom.name",
     "url": "https://github.com/mhillerstrom"
   },
   "contributors": [],
@@ -34,7 +36,7 @@
     "prepublish": "npm run compile",
     "compile": "shx rm -rf lib/ && tsc",
     "test": "npm run compile && npm run mocha",
-    "mocha": "rm -rf ./.scratch; nyc mocha --config ../../.mocharc.ts.json --recursive test/**.test.ts test/**/*.test.ts test/**.test.js test/**/*.test.js"
+    "mocha": "rm -rf ./.scratch; nyc mocha --config ../../.mocharc.ts.json --recursive test/*"
   },
   "directories": {
     "lib": "lib"
@@ -45,6 +47,7 @@
   "dependencies": {
     "@feathersjs-offline/common": "^0.0.1",
     "@feathersjs-offline/snapshot": "^0.0.1",
+    "@feathersjs-offline/own-common": "^0.0.1",
     "@feathersjs/adapter-commons": "^4.5.7",
     "@feathersjs/commons": "^4.5.9",
     "debug": "^4.2.0",

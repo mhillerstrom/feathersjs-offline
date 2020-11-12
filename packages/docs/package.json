@@ -1,14 +1,16 @@
 {
   "name": "feathersjs-offline-docs",
   "description": "FeathersJS Offline documentation",
-  "version": "2.2.0",
+  "version": "0.0.1",
   "private": true,
   "homepage": "https://github.com/feathersjs-offline/docs",
   "main": "",
   "keywords": [
     "feathers",
     "feathersjs-offline",
-    "feathersjs-offline-docs"
+    "feathersjs-offline-docs",
+    "offline-first",
+    "realtime"
   ],
   "license": "MIT",
   "repository": {
@@ -17,7 +19,7 @@
   },
   "author": {
     "name": "Michael Hillerström",
-    "email": "michael@hillerstrom.name",
+    "email": "michael(at)hillerstrom.name",
     "url": "https://github.com/mhillerstrom/feathersjs-offline-docs.com"
   },
   "contributors": [],

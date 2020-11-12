@@ -270,13 +270,13 @@ class OwnClass extends AdapterService {
           await self._removeQueuedEvent('create1', queueId, newData, newData.updatedAt);
           await self.localService.patch(rres[self.id], rres)
             .catch(async err => {
-              // We have to test for a possible race condition
-              let [lerr, lres] = await to( self.localService.get(id) );
-              let [rerr, rres] = await to( self.remoteService.get(id) );
-              if (!lres && rres) {
-                // Something is very wrong
-                throw new errors.NotFound(`Create. id = '${id} not found on localService. Please report error!`);
-              }
+              // // We have to test for a possible race condition
+              // let [lerr, lres] = await to( self.localService.get(id) );
+              // let [rerr, rres] = await to( self.remoteService.get(id) );
+              // if (!lres && rres) {
+              //   // Something is very wrong
+              //   throw new errors.NotFound(`Create. id = '${id} not found on localService. Please report error!`);
+              // }
               // We have simply been overtaken by a remove request.
             });
 
@@ -289,7 +289,7 @@ class OwnClass extends AdapterService {
             // Let's silently ignore missing connection to server -
             // we'll catch-up next time we get a connection
             // In all other cases do the following:
-            try {
+          try {
               await self._removeQueuedEvent('create2', queueId, rerr.message/*newData*/, newData.updatedAt);
           } catch (error) {
             console.error(`Error _removeQueuedEvent (create2) error=${error.name}, ${error.message}`);
@@ -563,6 +563,7 @@ debug(`patch current = ${JSON.stringify(current)}`);
             debug(`_remove TIMEOUT: ${rerr.name}, ${rerr.message}`);
           } else {
             debug(`_remove ERROR: ${rerr.name}, ${rerr.message}`);
+            debug(`beforeRecord = ${JSON.stringify(beforeRecord)}`);
             if (beforeRecord.onServerAt === 0) {
               // In all likelihood the document/item was never on the server
               // so we choose to silently ignore this situation

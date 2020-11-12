@@ -1,16 +1,17 @@
 {
-  "name": "example",
+  "name": "@feathersjs-offline/example",
   "version": "0.0.1",
-  "description": "A FeathersJS exapmle application showcasing offline realtime support (own-data/own-net)",
+  "description": "A FeathersJS example application showcasing offline realtime support (own-data/own-net)",
   "keywords": [
     "feathers",
     "offline",
-    "realtime",
-    "example"
+    "example",
+    "offline-first",
+    "realtime"
   ],
-  "author": "Michael Hillerström <michael@hillerstrom.name>",
+  "author": "Michael Hillerström <michael(at)hillerstrom.name>",
   "homepage": "https://github.com/mhillerstrom/feathersjs-offline/tree/master/packages/example#readme",
-  "license": "ISC",
+  "license": "MIT",
   "main": "app/example.js",
   "directories": {
     "lib": "lib",

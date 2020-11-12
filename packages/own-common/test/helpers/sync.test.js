@@ -1,13 +1,13 @@
 'use strict';
 const { expect } = require('chai');
 const feathers = require('@feathersjs/feathers');
-const errors = require('@feathersjs/errors');
 const socketio = require('@feathersjs/socketio');
 const memory = require('feathers-memory');
 const io = require('socket.io-client');
 const socketioClient = require('@feathersjs/socketio-client');
+const delay = require('./delay');
+const setUpHooks = require('./setup-hooks');
 const RealtimeServiceWrapper = require('@feathersjs-offline/server');
-const { Ownnet, ownnetWrapper } = require('../src');
 
 const RealtimeService = RealtimeServiceWrapper(memory);
 const port = 8888;
@@ -17,15 +17,15 @@ const socket = io(url);
 let verbose = false;
 let app;
 let service;
-let ix = 0;
 
+module.exports = (desc, _app, _errors, wrapperFn, serviceName, verbose) => {
 const logAction = (type, action) => {
   return (msg, _ctx) => {
     console.log(`${type}: action=${action}, msg=${JSON.stringify(msg)}, _ctx.params=${JSON.stringify(_ctx.params)}, _ctx.query=${JSON.stringify(_ctx.query)}`);
   }
 }
 
-describe('Ownnet-test - sync', () => {
+describe('Owndata-test - sync', () => {
   let remote;
   let rApp;
   let clientSyncResult = [];
@@ -38,8 +38,8 @@ describe('Ownnet-test - sync', () => {
     rApp = feathers()
     .configure(socketio())
     .use(path, RealtimeService({multi: true}));
-    setUpHooks(rApp, 'SERVER', path, true);
     remote = rApp.service(path);
+    setUpHooks('SERVER', path, remote, true, verbose);
 
     // ['created', 'updated', 'patched', 'removed'].forEach(a => remote.on(a, logAction('SERVER', a)));
 
@@ -62,16 +62,14 @@ describe('Ownnet-test - sync', () => {
     // Define client
     app = feathers();
     app.configure(socketioClient(socket));
-    app.use(path, Ownnet({ }));
+    app.use(path, wrapperFn());
     service = app.service(path);
-    setUpHooks(rApp, 'CLIENT', path, false);
     // ['created', 'updated', 'patched', 'removed'].forEach(a => service.on(a, logAction('CLIENT', a)));
-    // ['created', 'updated', 'patched', 'removed'].forEach(a => service.localService.on(a, logAction('LOCAL', a)));
-    // ['created', 'updated', 'patched', 'removed'].forEach(a => service.localQueue.on(a, logAction('QUEUE', a)));
+    // ['created', 'updated', 'patched', 'removed'].forEach(a => service.local.on(a, logAction('LOCAL', a)));
+    // ['created', 'updated', 'patched', 'removed'].forEach(a => service.queue.on(a, logAction('QUEUE', a)));
   });
 
   it('sync works', () => {
-    // We simulate missing connection
     return service.create({ id: 99, order: 99 }, { query: { _fail: true } })
       .then(data => {
         expect(typeof data.uuid).to.equal('string', 'uuid was added');
@@ -88,10 +86,15 @@ describe('Ownnet-test - sync', () => {
         expect(res.length).to.equal(2, '2 rows on remote');
       })
       .then(async () => {
-        expect(typeof service.sync).to.equal('function', '.sync() is a method');
+        let flag = null;
+        try {
+          await service.sync();
+          flag = true;
+        } catch (err) {
+          flag = false;
+        }
+        expect(true).to.equal(flag, '.sync() is a method');
       })
-      // Now the connection is back and we explicitly ask to perform a sync
-      .then(() => service.sync())
       .then(delay())
       .then(() => remote.find({ query: { $sort: {id: 1} } }))
       .then(delay())
@@ -110,56 +113,4 @@ describe('Ownnet-test - sync', () => {
   });
 });
 
-// Helpers
-
-function delay (ms = 0) {
-  return data => new Promise(resolve => {
-    setTimeout(() => {
-      resolve(data);
-    }, ms);
-  });
-}
-
-/**
- * This sets up a before an error hook for all functions for a given service. The hook
- * can simulate e.g. backend failure, network connection troubles, or timeout by supplying
- * ```{query: {_fail:true}}``` to the call options.
- * If `_fail` is false or the query is not supplied all this hook is bypassed.
- *
- * @param {object} app The application handle
- * @param {string} type Typically 'Remote' or 'Client'
- * @param {string} service The service to be hooked into
- * @param {boolean} allowFail Will we allow the usage of _fail and _timeout? (Default false)
- */
-function setUpHooks (app, type, service, allowFail = false) {
-  if (verbose) console.log(`setUpHooks called: type=${type}, service=${service}, allowFail=${allowFail}`)
-  app.service(service).hooks({
-    before: {
-      all: async context => {
-        if (verbose) {
-          const data = context.data ? `\n\tdata\t${JSON.stringify(context.data)}` : '';
-          const params = context.params ? `\n\tparams\t${JSON.stringify(context.params)}` : '';
-          console.log(`Before.all.hook ${type}.${context.method} called${data}${params}\n\tallowFail = ${allowFail}`);
-        }
-        if (allowFail && context.params.query) {
-          if (context.params.query._fail) { // Passing in param _fail simulates errors
-            throw new errors.Timeout('Fail requested by user request - simulated timeout/missing connection');
-          }
-          else {
-            // _fail was supplied but not true - remove it before continuing
-            delete context.params.query._fail;
-            return context;
-          }
-        }
-      }
-
-    },
-    error: {
-      all: context => {
-        if (verbose) {
-          console.error(`Error.all.hook ${type}.${context.method} ERROR ${JSON.stringify(context.error)}`);
-        }
-      }
-    }
-  });
 }

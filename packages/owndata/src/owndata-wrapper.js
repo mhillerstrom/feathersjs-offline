@@ -1,7 +1,7 @@
 import { stripSlashes } from '@feathersjs/commons';
 import errors from '@feathersjs/errors';
 import { to } from '@feathersjs-offline/common';
-import OwnClass from './own-class';
+import OwnClass from '@feathersjs-offline/own-common';
 
 const debug = require('debug')('@feathersjs-offline:owndata:service-wrapper');
 
@@ -38,25 +38,26 @@ class OwndataClass extends OwnClass {
     let stop = false;
     while (store.length && !stop) {
       const el = store.shift();
-      const event = el.eventName;
-      debug(`    >> ${JSON.stringify(el)} <<`);
+console.log(`el = ${JSON.stringify(el)}`);
+      let { eventName, record, arg1, arg2 = null, arg3 = null, id } = el;
+console.log(`eventName = ${eventName}, record = ${JSON.stringify(record)}, arg1 = ${JSON.stringify(arg1)}, arg2 = ${JSON.stringify(arg2)}, arg3 = ${JSON.stringify(arg3)}, id = ${id}`);
+      ({eventName, record, arg1, arg2, arg3, id} = _accEvent(this.id, eventName, record, arg1, arg2, arg3));
+console.log(`eventName = ${eventName}, record = ${JSON.stringify(record)}, arg1 = ${JSON.stringify(arg1)}, arg2 = ${JSON.stringify(arg2)}, arg3 = ${JSON.stringify(arg3)}, id = ${id}`);
 
       try {
-        let arg2 = el.arg2 || null;
-        let arg3 = el.arg3 || null;
-        debug(`    processing: event=${event}, arg1=${JSON.stringify(el.arg1)}, arg2=${JSON.stringify(arg2)}, arg3=${JSON.stringify(arg3)}`)
-        await self.remoteService[event](el.arg1, arg2, arg3)
+        debug(`    processing: event=${eventName}, arg1=${JSON.stringify(arg1)}, arg2=${JSON.stringify(arg2)}, arg3=${JSON.stringify(arg3)}`)
+        await self.remoteService[eventName](arg1, arg2, arg3)
           .then(async res => {
-            await to(self.localQueue.remove(el.id));
+            await to(self.localQueue.remove(id));
             if (event !== 'remove') {
               // Let any updates to the document/item on server reflect on the local DB
               await to(self.localService.patch(res[self.id], res));
             }
           })
           .catch(async err => {
-            if (el.record.onServerAt === 0  &&  event === 'remove') {
+            if (record.onServerAt === 0  &&  eventName === 'remove') {
               // This record has probably never been on server (=remoteService), so we silently ignore the error
-              await to(self.localQueue.remove(el.id));
+              await to(self.localQueue.remove(id));
             }
             else {
               // The connection to the server has probably been cut - let's continue at another time
@@ -131,3 +132,20 @@ function owndataWrapper (app, path, options = {}) {
 module.exports = { init, Owndata, owndataWrapper };
 
 init.Service = OwndataClass;
+
+
+// Helper
+
+function _accEvent(idName, eventName, el, arg1, arg2, arg3, id) {
+  let elId = el[idName];
+  switch (eventName) {
+    case 'create':
+      return { eventName, el, arg1: el, arg2: {}, arg3: {}, id };
+    case 'update':
+      return { eventName, el, arg1, arg2, arg3: {}, id };
+    case 'patch':
+      return { eventName, el, arg1: elId, arg2: el, arg3: {}, id };
+    case 'remove':
+      return { eventName, el, arg1: elId, arg2: {}, arg3: {}, id };
+  }
+}

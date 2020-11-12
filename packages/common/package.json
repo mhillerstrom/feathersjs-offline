@@ -7,7 +7,9 @@
   "types": "lib/",
   "keywords": [
     "feathers",
-    "feathers-plugin"
+    "feathers-plugin",
+    "offline-first",
+    "realtime"
   ],
   "license": "MIT",
   "funding": {
@@ -20,7 +22,7 @@
   },
   "author": {
     "name": "Michael Hillerstroem",
-    "email": "michael@hillerstrom.name",
+    "email": "michael(at)hillerstrom.name",
     "url": "https://github.com/mhillerstrom"
   },
   "contributors": [],

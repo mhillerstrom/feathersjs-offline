@@ -3,7 +3,7 @@ const feathers = require('@feathersjs/feathers');
 const errors =  require('@feathersjs/errors');
 const adapterTests = require('@feathersjs/adapter-tests');
 const memory = require('feathers-memory');
-const RealtimeServiceWrapper = require('../lib/server');
+const RealtimeServiceWrapper = require('../src/server');
 
 const testSuite = adapterTests([
   '.options',

@@ -1,7 +1,7 @@
 import { stripSlashes } from '@feathersjs/commons';
 import errors from '@feathersjs/errors';
 import { to } from '@feathersjs-offline/common';
-import OwnClass from '../../owndata/src/own-class';
+import OwnClass from '@feathersjs-offline/own-common/own-class';
 import { config } from 'process';
 
 const debug = require('debug')('@feathersjs-offline:ownnet:service-wrapper');
@@ -22,7 +22,7 @@ class OwnnetClass extends OwnClass {
 //    const debug = (...args) => console.log(...args);
     debug(`processQueuedEvents (${this.type}) entered (IPallowed=${this.internalProcessingAllowed()}, pQActive=${this.pQActive})`);
     if (!this.internalProcessingAllowed() || this.pQActive) {
-      // console.log(`processingQueuedEvents: internalProcessing (aIP=${this.aIP}), pQActive=${this.pQActive}`);
+      debug(`processingQueuedEvents: leaving  internalProcessing (aIP=${this.aIP}), pQActive=${this.pQActive}`);
       return false;
     }
     this.pQActive = true;
@@ -35,9 +35,8 @@ class OwnnetClass extends OwnClass {
 
     this.disallowInternalProcessing();
 
-    debug(`  store = ${JSON.stringify(store)}`);
+    debug(`  processing ${store.length} queued entries...`);
     let self = this;
-
     let i = 0; // Current event
     let j = 0; // Current first event
     let ids = []; // The ids of the entries in localQueue currently accumulated
@@ -81,7 +80,7 @@ class OwnnetClass extends OwnClass {
       }
     } while (i < store.length);
 
-//    console.log(`netOps = ${JSON.stringify(netOps)}`);
+    debug(`netOps = ${JSON.stringify(netOps)}`);
 
     // Now, send all necessary updates to the remote service (server)
     stop = false;
@@ -89,7 +88,7 @@ class OwnnetClass extends OwnClass {
     let result = await Promise.all(netOps.map(async op => {
       let { event, el, arg1, arg2, arg3, ids } = op;
       let mdebug = `  remoteService['${event}'](${JSON.stringify(arg1)}, ${JSON.stringify(arg2)}, ${JSON.stringify(arg3)})`;
-//      console.log(mdebug);
+      debug(mdebug);
       return await self.remoteService[event](arg1, arg2, arg3)
         .then(async res => {
           return await self.localQueue.remove(null, { query: { id: { $in: ids } } })
@@ -97,9 +96,8 @@ class OwnnetClass extends OwnClass {
               if (event !== 'remove') {
                 return await self.localService.patch(res[self.id], res)
                   .catch(err => {
-                    debug(mdebug);
+                    debug(mdebug+' (copy)');
                     debug(`  localService.patch(${JSON.stringify(res[self.id])}, ${JSON.stringify(res)})`);
-                    debug(`  ev = ${JSON.stringify(ev)}`);
                     return true;
                   })
                   .then(() => { return false; })

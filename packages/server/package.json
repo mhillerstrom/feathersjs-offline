@@ -5,12 +5,15 @@
   "keywords": [
     "Feathersjs",
     "offline",
-    "mobile"
+    "mobile",
+    "offline-first",
+    "realtime"
+
   ],
-  "author": "Michael Hillerström <michael@hillerstrom.name>",
+  "author": "Michael Hillerström <michael(at)hillerstrom.name>",
   "homepage": "https://github.com/mhillerstrom/feathersjs-offline/tree/master/packages/server#readme",
   "license": "ISC",
-  "main": "src/server.js",
+  "main": "lib/server.js",
   "directories": {
     "lib": "lib",
     "test": "test"
@@ -32,12 +35,12 @@
     "url": "https://github.com/mhillerstrom/feathersjs-offline/issues"
   },
   "dependencies": {
+    "@feathersjs-offline/common": "^0.0.1",
+    "@feathersjs/errors": "^4.5.9",
     "debug": "^4.2.0"
   },
   "devDependencies": {
-    "@feathersjs-offline/common": "^0.0.1",
     "@feathersjs/adapter-tests": "^4.5.4",
-    "@feathersjs/errors": "^4.5.9",
     "@feathersjs/express": "^4.5.9",
     "@feathersjs/feathers": "^4.5.9",
     "@feathersjs/socketio-client": "^4.5.9",

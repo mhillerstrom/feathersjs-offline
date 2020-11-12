@@ -5,14 +5,14 @@ const RealtimeServiceWrapper = require('@feathersjs-offline/server');
 
 const RealtimeService = RealtimeServiceWrapper(memory);
 
-module.exports = function (path) {
+module.exports = function (path, verbose) {
   const app = feathers()
     .configure(socketio())
     .use(path, new RealtimeService({multi: true}))
 
   const service = app.service(path);
 
-  const logAction = (msg, _ctx) => {console.log(`SERVER: msg=${JSON.stringify(msg)}, _ctx.params=${JSON.stringify(_ctx.params)}, _ctx.query=${JSON.stringify(_ctx.query)}`)}
+  const logAction = (msg, _ctx) => {if (verbose) console.log(`SERVER: msg=${JSON.stringify(msg)}, _ctx.params=${JSON.stringify(_ctx.params)}, _ctx.query=${JSON.stringify(_ctx.query)}`)}
   service.on('created', logAction)
   service.on('updated', logAction)
   service.on('patched', logAction)

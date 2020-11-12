@@ -1,9 +1,6 @@
 'use strict';
-const feathers = require('@feathersjs/feathers');
-const errors =  require('@feathersjs/errors');
 const adapterTests = require('@feathersjs/adapter-tests');
 const memory = require('feathers-memory');
-const { owndataWrapper } = require('../src');
 
 const testSuite = adapterTests([
   '.options',
@@ -73,23 +70,27 @@ const testSuite = adapterTests([
   '.find + paginate + params'
 ]);
 
-describe('OwndataWrapper - adapterTest', () => {
+module.exports = (title, app, _errors, wrapper, serviceName, idProp) => {
+
+describe(title, () => {
   beforeEach(() => {
   });
 
   // Let's perform all the usual adapter tests to verify full functionality
-  let app = feathers();
   const events = ['testing'];
 
-  app.use('people', memory({ events }));
-  owndataWrapper(app, 'people', {adapterTest: true, store: {}});
-  testSuite(app, errors, 'people');
 
-  app.use('people-customid', memory({ events, id: 'customid' }));
-  owndataWrapper(app, 'people-customid', {adapterTest: true, store: {}});
-  testSuite(app, errors, 'people-customid', 'customid');
+  if (idProp !== undefined && idProp !== 'id') {
+    app.use(serviceName, memory({ events, id: idProp }));
+    wrapper(app, 'people', {adapterTest: true, store: {}});
+  } else {
+    app.use(serviceName, memory({ events }));
+    // We want to test the wrappers default value for id (which is 'id')
+    wrapper(app, 'people', {adapterTest: true, store: {}});
+    idProp = 'id';
+  }
 
-  app.use('people-uuid', memory({ events, id: 'uuid' }));
-  owndataWrapper(app, 'people-uuid', {adapterTest: true, store: {}});
-  testSuite(app, errors, 'people-uuid', 'uuid');
+  testSuite(app, _errors, serviceName, idProp);
 });
+
+};
