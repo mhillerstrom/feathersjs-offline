@@ -1,10 +1,10 @@
 module.exports = {
-  title: 'FeathersJS Offline',
+  title: 'FeathersJS Offline-first Guide',
   description: 'An offline-first capability with automatic synchronization added to the impressive Feathers stack for modern applications',
   thirdPartyComponents: {
-    fontAwesomeIcons:{
-        regular:['lightbulb'],  // Regular font awesome icon keys here
-        solid:[ 'thumbs-up']    // Solid font awesome icon keys here
+    fontAwesomeIcons: {
+      regular: ['lightbulb'],  // Regular font awesome icon keys here
+      solid: ['thumbs-up']    // Solid font awesome icon keys here
     }
   },
   themeConfig: {
@@ -12,10 +12,10 @@ module.exports = {
       apiKey: '2835d290e600f7fb583e2b61a74032ba',
       indexName: 'feathersjs-offline'
     },
-    logo: '/img/feathers-logo-wide.png',
+    logo: '/img/feathers-offline-logo-wide.png',
     repo: 'mhillerstrom/feathersjs-offline/',
-    docsRepo: 'mhillerstrom/feathersjs-offline/docs',
-    docsBranch: 'crow',
+    docsRepo: 'mhillerstrom/feathersjs-offline',
+    docsBranch: 'First-version', // 'crow',
     editLinks: true,
     sidebarDepth: 2,
     sidebar: {
@@ -137,10 +137,10 @@ module.exports = {
           text: 'Feathersjs (v4 Crow, current)',
           link: 'https://docs.feathersjs.com'
         }, {
-            text: 'Awesome Feathersjs',
-            link: 'https://github.com/feathersjs/awesome-feathersjs'
+          text: 'Awesome Feathersjs',
+          link: 'https://github.com/feathersjs/awesome-feathersjs'
         }, {
-            text: 'YouTube Playlist',
+          text: 'YouTube Playlist',
           link: 'https://www.youtube.com/playlist?list=PLwSdIiqnDlf_lb5y1liQK2OW5daXYgKOe'
         }, {
           text: 'Feathers VueX',

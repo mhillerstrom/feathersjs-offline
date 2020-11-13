@@ -1,8 +1,8 @@
 //'use strict';
 const { expect } = require('chai');
 const feathers = require('@feathersjs/feathers');
-const errors = require('@feathersjs/errors');
 const { stripSlashes } = require('@feathersjs/commons');
+const errors = require('@feathersjs/errors');
 const adapterTests = require('./helpers/adapter.test');
 const wrapperBasic = require('./helpers/wrapper-basic.test');
 const ownWrapper = require('./helpers/own-wrapper.test');
@@ -46,6 +46,9 @@ function ownclassWrapper (app, path, options = {}) {
   return app.services[location];
 }
 
+const init = options => {return new OwnClass(options)};
+init.Service = OwnClass;
+
 
 describe(`${package}Wrapper tests`, () => {
   app = feathers();
@@ -56,6 +59,6 @@ describe(`${package}Wrapper tests`, () => {
 
   wrapperBasic(`${package}Wrapper basic functionality`, app, errors, ownclassWrapper, 'wrapperBasic', verbose);
   ownWrapper(`${package}Wrapper specific functionality`, app, errors, ownclassWrapper, 'ownWrapper', verbose);
-  syncTests(`${package}Wrapper sync functionality`, app, errors, OwnClass, 'syncTests', verbose);
+  syncTests(`${package}Wrapper sync functionality`, app, errors, init, 'syncTests', verbose);
 
 })

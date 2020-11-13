@@ -1,10 +1,10 @@
 import EventEmitter from 'component-emitter';
-import errors from '@feathersjs/errors';
-import { _, hooks, stripSlashes } from '@feathersjs/commons';
-import { sorter, select, AdapterService } from '@feathersjs/adapter-commons';
-import { genUuid, to } from '@feathersjs-offline/common';
 import sift from 'sift';
+import { sorter, select, AdapterService } from '@feathersjs/adapter-commons';
+import { _, hooks, stripSlashes } from '@feathersjs/commons';
+import errors from '@feathersjs/errors';
 import ls from 'feathers-localstorage';
+import { genUuid, to } from '@feathersjs-offline/common';
 import snapshot from '@feathersjs-offline/snapshot';
 
 const debug = require('debug')('@feathersjs-offline:owndata:ownnet:service-base');

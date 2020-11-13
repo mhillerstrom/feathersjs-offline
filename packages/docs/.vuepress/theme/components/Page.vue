@@ -164,7 +164,8 @@ export default {
       return (
         base.replace(endingSlashRE, '')
         + `/edit`
-        + `/${docsBranch}/`
+        + `/${docsBranch}`
+        + `/packages/docs/`
         + (docsDir ? docsDir.replace(endingSlashRE, '') + '/' : '')
         + path
       )

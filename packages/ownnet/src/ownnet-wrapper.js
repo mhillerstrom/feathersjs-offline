@@ -1,8 +1,7 @@
 import { stripSlashes } from '@feathersjs/commons';
 import errors from '@feathersjs/errors';
 import { to } from '@feathersjs-offline/common';
-import OwnClass from '@feathersjs-offline/own-common/own-class';
-import { config } from 'process';
+import OwnClass from '@feathersjs-offline/own-common';
 
 const debug = require('debug')('@feathersjs-offline:ownnet:service-wrapper');
 
@@ -177,7 +176,7 @@ function ownnetWrapper(app, path, options = {}) {
   }
 
   let opts = Object.assign({}, old.options, options);
-  app.use(location, Ownnet(opts, true));
+  app.use(location, Ownnet(opts));
   app.services[location].options = opts;
   app.services[location]._listenOptions();
 

@@ -12,7 +12,7 @@
   ],
   "author": "Michael Hillerström <michael(at)hillerstrom.name>",
   "homepage": "https://github.com/mhillerstrom/feathersjs-offline/tree/master/packages/server#readme",
-  "license": "ISC",
+  "license": "MIT",
   "main": "lib/server.js",
   "directories": {
     "lib": "lib",
@@ -35,8 +35,8 @@
     "url": "https://github.com/mhillerstrom/feathersjs-offline/issues"
   },
   "dependencies": {
-    "@feathersjs-offline/common": "^0.0.1",
     "@feathersjs/errors": "^4.5.9",
+    "@feathersjs-offline/common": "^0.0.1",
     "debug": "^4.2.0"
   },
   "devDependencies": {

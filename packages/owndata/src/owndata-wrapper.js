@@ -37,12 +37,12 @@ class OwndataClass extends OwnClass {
     let self = this;
     let stop = false;
     while (store.length && !stop) {
-      const el = store.shift();
+      let el = store.shift();
 console.log(`el = ${JSON.stringify(el)}`);
       let { eventName, record, arg1, arg2 = null, arg3 = null, id } = el;
 console.log(`eventName = ${eventName}, record = ${JSON.stringify(record)}, arg1 = ${JSON.stringify(arg1)}, arg2 = ${JSON.stringify(arg2)}, arg3 = ${JSON.stringify(arg3)}, id = ${id}`);
-      ({eventName, record, arg1, arg2, arg3, id} = _accEvent(this.id, eventName, record, arg1, arg2, arg3));
-console.log(`eventName = ${eventName}, record = ${JSON.stringify(record)}, arg1 = ${JSON.stringify(arg1)}, arg2 = ${JSON.stringify(arg2)}, arg3 = ${JSON.stringify(arg3)}, id = ${id}`);
+      ({eventName, el, arg1, arg2, arg3, id} = _accEvent(this.id, eventName, record, arg1, arg2, arg3, id));
+console.log(`eventName = ${eventName}, el = ${JSON.stringify(el)}, arg1 = ${JSON.stringify(arg1)}, arg2 = ${JSON.stringify(arg2)}, arg3 = ${JSON.stringify(arg3)}, id = ${id}`);
 
       try {
         debug(`    processing: event=${eventName}, arg1=${JSON.stringify(arg1)}, arg2=${JSON.stringify(arg2)}, arg3=${JSON.stringify(arg3)}`)
@@ -122,7 +122,7 @@ function owndataWrapper (app, path, options = {}) {
   }
 
   let opts = Object.assign({}, old.options, options);
-  app.use(location, Owndata(opts, true));
+  app.use(location, Owndata(opts));
   app.services[location].options = opts;
   app.services[location]._listenOptions();
 

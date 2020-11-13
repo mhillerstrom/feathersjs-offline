@@ -1,7 +1,7 @@
 const { assert, expect } = require('chai');
-const sorter = require('./sorter'); // require('@feathersjs/adapter-commons');
 const _ = require('lodash');
 const { omit, remove } = _;
+const sorter = require('./sorter'); // require('@feathersjs/adapter-commons');
 const { service2 } = require('./client-service');
 const setUpHooks = require('./setup-hooks');
 const failOnceHook = require('./fail-once-hook');
@@ -30,7 +30,7 @@ function setupServices() {
 
 describe(`${desc} - optimistic mutation`, () => {
   let data;
-  let eventSort = sorter({ action: 1, source: -1, 'record.id': 1, 'record.uuid': 1 });
+  let eventSort = sorter({ id: 1, uuid: 1 });
 
   beforeEach(() => {
     setupServices();
