@@ -12,10 +12,11 @@ module.exports = {
       apiKey: '2835d290e600f7fb583e2b61a74032ba',
       indexName: 'feathersjs-offline'
     },
-    logo: '/img/feathers-offline-logo-wide.png',
-    repo: 'mhillerstrom/feathersjs-offline/',
-    docsRepo: 'mhillerstrom/feathersjs-offline',
-    docsBranch: 'First-version', // 'crow',
+    logo: '/img/feathers-offline-first.png',
+    repo: 'feathersjs-offline/',
+    base: '/docs/',
+    docsRepo: 'docs',
+    docsBranch: 'crow',
     editLinks: true,
     sidebarDepth: 2,
     sidebar: {

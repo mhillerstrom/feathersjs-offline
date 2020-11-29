@@ -2,25 +2,23 @@ const { assert, expect } = require('chai');
 const _ = require('lodash');
 const { omit, remove } = _;
 const sorter = require('./sorter'); // require('@feathersjs/adapter-commons');
-const { service2 } = require('./client-service');
+const { service2, service4 } = require('./client-service');
 const setUpHooks = require('./setup-hooks');
 const failOnceHook = require('./fail-once-hook');
 
-
 const sampleLen = 5; // Size of test database (backend)
 
-module.exports = (desc, _app, _errors, wrapper, serviceName, verbose) => {
+module.exports = (desc, _app, _errors, wrapper, serviceName, verbose, isBaseClass = false) => {
 
 let clientService;
 
-async function getRows(service) {
+async function getRows (service) {
   let gRows = null;
   gRows = await service.find({ query: { id: { $gte: 0 }, $sort: { order: 1 } } });
   return gRows;
 }
 
-
-function setupServices() {
+function setupServices () {
   clientService = service2(wrapper, serviceName);
   setUpHooks('REMOTE', serviceName, clientService.remote, true, verbose);
   setUpHooks('CLIENT', serviceName, clientService.local, false, verbose);
@@ -31,6 +29,10 @@ function setupServices() {
 describe(`${desc} - optimistic mutation`, () => {
   let data;
   let eventSort = sorter({ id: 1, uuid: 1 });
+
+  after(() => {
+    console.log('\n');
+  });
 
   beforeEach(() => {
     setupServices();
@@ -70,7 +72,7 @@ describe(`${desc} - optimistic mutation`, () => {
 
   });
 
-  describe('without publication', () => {
+  describe('without error', () => {
 
     beforeEach(() => {
       return clientService.create(clone(data))
@@ -254,7 +256,7 @@ describe(`${desc} - optimistic mutation`, () => {
     });
   });
 
-  describe('without publication & remote error (timeout)', () => {
+  describe('with remote error (timeout)', () => {
 
     beforeEach(() => {
       return clientService.create(clone(data))
@@ -340,7 +342,8 @@ describe(`${desc} - optimistic mutation`, () => {
     });
 
     it('patch works and sync recovers', () => {
-      let clientRows = null;
+      let clientRows = [];
+      let remoteRows = [];
 
       return clientService.patch(1, { order: 99 }, { query: { _fail: true } })
         .then(delay())
@@ -355,6 +358,7 @@ describe(`${desc} - optimistic mutation`, () => {
         .then(() => getRows(clientService.remote))
         .then(delay())
         .then(fromRows => {
+          remoteRows = fromRows;
           assert.lengthOf(fromRows, sampleLen);
           assertDeepEqualExcept(fromRows, data, ['updatedAt', 'onServerAt']);
         })
@@ -364,14 +368,20 @@ describe(`${desc} - optimistic mutation`, () => {
         .then(() => getRows(clientService.remote))
         .then(delay())
         .then(fromRows => {
-          // Make sure remote data has changed...
           assert.lengthOf(fromRows, sampleLen);
-          assertDeepEqualExcept(fromRows, clientRows, ['updatedAt', 'onServerAt']);
+          if (isBaseClass) {
+            // Make sure remote data has not changed due to dummy _processQueuedEvents()...
+            assertDeepEqualExcept(fromRows, remoteRows, ['updatedAt', 'onServerAt']);
+          } else {
+            // Make sure remote data has changed...
+            assertDeepEqualExcept(fromRows, clientRows, ['updatedAt', 'onServerAt']);
+          }
         })
     });
 
     it('remove works and sync recovers', () => {
-      let clientRows = null;
+      let clientRows = [];
+      let remoteRows = [];
 
       return clientService.remove(2, { query: { _fail: true } })
         .then(delay())
@@ -390,6 +400,7 @@ describe(`${desc} - optimistic mutation`, () => {
         .then(() => getRows(clientService.remote))
         .then(delay())
         .then(fromRows => {
+          remoteRows = fromRows;
           assert.lengthOf(fromRows, sampleLen);
           assertDeepEqualExcept(fromRows, data, ['updatedAt', 'onServerAt']);
         })
@@ -403,14 +414,20 @@ describe(`${desc} - optimistic mutation`, () => {
         .then(() => getRows(clientService.remote))
         .then(delay())
         .then(fromRows => {
-          // Make sure remote data has changed...
-          assert.lengthOf(fromRows, sampleLen - 1);
-          assertDeepEqualExcept(fromRows, clientRows, ['updatedAt', 'onServerAt']);
-        })
+          if (isBaseClass) {
+            // Make sure remote data has not changed due to dummy _processQueuedEvents()...
+            assert.lengthOf(fromRows, sampleLen);
+            assertDeepEqualExcept(fromRows, remoteRows, ['updatedAt', 'onServerAt']);
+          } else {
+            // Make sure remote data has changed...
+            assert.lengthOf(fromRows, sampleLen - 1);
+            assertDeepEqualExcept(fromRows, clientRows, ['updatedAt', 'onServerAt']);
+          }
+          })
     });
   });
 
-  describe('without publication & remote error (not timeout)', () => {
+  describe('with remote error (not timeout)', () => {
 
     beforeEach(() => {
       return clientService.create(clone(data))
@@ -442,10 +459,12 @@ describe(`${desc} - optimistic mutation`, () => {
       let beforeRows = null;
       let afterRows = null;
 
+      // The server have the original 5 rows
       return getRows(clientService)
         .then(rows => { beforeRows = rows; })
         .then(clientService.create({ id: 99, uuid: 1099, order: 99 }, { query: { _badFail: true } })
-          .catch(error => {
+        // _badFail means we get any error but a Timeout - we have to revert any change
+        .catch(error => {
             expect(true).to.equal(false, `This should not happen! Received error '${error.name}'`);
           })
         )
@@ -475,10 +494,12 @@ describe(`${desc} - optimistic mutation`, () => {
       let beforeRows = null;
       let afterRows = null;
 
+      // The server have the original 5 rows
       return getRows(clientService)
         .then(rows => { beforeRows = rows; })
         .then(clientService.update(0, { id: 0, uuid: 1000, order: 99 }, { query: { _badFail: true } })
-          .catch(error => {
+        // _badFail means we get any error but a Timeout - we have to revert any change
+        .catch(error => {
             expect(true).to.equal(false, `This should not happen! Received error '${error.name}'`);
           })
         )
@@ -507,10 +528,12 @@ describe(`${desc} - optimistic mutation`, () => {
       let beforeRows = null;
       let afterRows = null;
 
+      // The server have the original 5 rows
       return getRows(clientService)
         .then(rows => { beforeRows = rows; })
         .then(clientService.patch(1, { order: 99 }, { query: { _badFail: true } })
-          .catch(error => {
+        // _badFail means we get any error but a Timeout - we have to revert any change
+        .catch(error => {
             expect(true).to.equal(false, `This should not happen! Received error '${error.name}'`);
           })
         )
@@ -555,7 +578,7 @@ describe(`${desc} - optimistic mutation`, () => {
         .then(rows => { afterRows = rows; })
         .then(() => {
           assert.lengthOf(beforeRows, sampleLen);
-          assert.lengthOf(afterRows, sampleLen - 1);
+          assert.lengthOf(afterRows, sampleLen);
         })
         .then(delay())
         .then(() => clientService.sync())
@@ -571,7 +594,7 @@ describe(`${desc} - optimistic mutation`, () => {
     });
   });
 
-  describe('Client side fails', () => {
+  describe('with local error', () => {
 
     beforeEach(async () => {
       clientService = setupServices();
@@ -601,7 +624,7 @@ describe(`${desc} - optimistic mutation`, () => {
         })
     });
 
-    it('Update fails, data preserved', () => {
+    it('update fails, data preserved', () => {
       let beforeRows = null;
       let afterRows = null;
 
@@ -624,7 +647,7 @@ describe(`${desc} - optimistic mutation`, () => {
         })
     });
 
-    it('Patch fails, data preserved', async () => {
+    it('patch fails, data preserved', async () => {
       let beforeRows = null;
       let afterRows = null;
 
@@ -648,7 +671,7 @@ describe(`${desc} - optimistic mutation`, () => {
         })
     });
 
-    it('Remove fails, data preserved', () => {
+    it('remove fails, data preserved', () => {
       let beforeRows = null;
       let afterRows = null;
 
@@ -718,16 +741,43 @@ describe(`${desc} - optimistic mutation`, () => {
         })
     });
   });
-});
 
+  describe('test of timed sync', () => {
+    let count = 0;
+
+    it('not called without setting of timedSync', () => {
+      clientService = service4(wrapper, {});
+      clientService.local.on('synced', () => count++);
+
+      count = 0;
+      return delay(500)()
+        .then(() => {
+          expect(count).to.equal(0, 'Timed synchronization works as expected');
+        })
+
+    });
+
+    it('called with timedSync set', () => {
+      clientService = service4(wrapper, { timedSync: 250 });
+      clientService.local.on('synced', () => count++);
+
+      count = 0;
+      return delay(700)(count)
+        .then(startVal => {
+          expect(count).to.equal(startVal+2, 'Timed synchronization works as expected');
+        })
+
+    });
+  })
+});
 
   // Helpers
 
-  function clone(obj) {
+  function clone (obj) {
     return JSON.parse(JSON.stringify(obj));
   }
 
-  function delay(ms = 0) {
+  function delay (ms = 0) {
     return data => new Promise(resolve => {
       setTimeout(() => {
         resolve(data);
@@ -735,8 +785,8 @@ describe(`${desc} - optimistic mutation`, () => {
     });
   }
 
-  function assertDeepEqualExcept(ds1, ds2, ignore, sort) {
-    function removeIgnore(ds) {
+  function assertDeepEqualExcept (ds1, ds2, ignore, sort) {
+    function removeIgnore (ds) {
       let dsc = clone(ds);
       dsc = omit(dsc, ignore);
       for (const i in dsc) {

@@ -3,7 +3,7 @@ const feathers = require('@feathersjs/feathers');
 const errors =  require('@feathersjs/errors');
 const adapterTests = require('@feathersjs/adapter-tests');
 const memory = require('feathers-memory');
-const RealtimeServiceWrapper = require('../src/server');
+const { realtimeWrapper } = require('../src');
 
 const testSuite = adapterTests([
   '.options',
@@ -75,7 +75,7 @@ const testSuite = adapterTests([
 
 let app;
 
-describe('RealtimeServerWrapper - adapterTest', () => {
+describe('RealtimeWrapper - adapterTest', () => {
   beforeEach(() => {
   });
 
@@ -83,14 +83,15 @@ describe('RealtimeServerWrapper - adapterTest', () => {
   app = feathers();
   const events = ['testing'];
 
-  const RealtimeService = RealtimeServiceWrapper(memory);
-
-  app.use('people', RealtimeService({ events, adapterTest: true}, app));
+  app.use('people', memory({ events }, app));
+  realtimeWrapper(app, 'people', { adapterTest: true });
   testSuite(app, errors, 'people');
 
-  app.use('/people-customid', RealtimeService({ id: 'customid', events, adapterTest: true}, app));
+  app.use('/people-customid', memory({ id: 'customid', events }, app));
+  realtimeWrapper(app, '/people-customid', { adapterTest: true });
   testSuite(app, errors, 'people-customid', 'customid');
 
-  app.use('/people-uuid', RealtimeService({ id: 'uuid', events, adapterTest: true}, app));
+  app.use('/people-uuid', memory({ id: 'uuid', events }, app));
+  realtimeWrapper(app, '/people-uuid', { adapterTest: true });
   testSuite(app, errors, 'people-uuid', 'uuid');
 });

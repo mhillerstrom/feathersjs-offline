@@ -2,7 +2,7 @@
 // Most of this code has been copied from 'https://github.com/feathers-plus/feathers-offline-snapshot/blob/master/src/index.js'
 //
 import makeDebug from 'debug';
-const debug = makeDebug('@feathersjs-offline/snapshot');
+const debug = makeDebug('@feathersjs-offline:snapshot');
 
 function snapshot (service, baseQuery) {
   debug(`snapshot start: ${JSON.stringify(baseQuery)}`);
@@ -12,8 +12,8 @@ function snapshot (service, baseQuery) {
 
   return service.find({ query })
     .then(result => {
-      debug(`snapshot query = ${JSON.stringify(query)}, read ${(result.data || result).length} records`);
-      debug(`snapshot   read ${JSON.stringify(result.data || result)}`);
+      debug(`snapshot query = ${JSON.stringify(query)}, read ${(result.data || result).length} records\n
+             snapshot   read ${JSON.stringify(result.data || result)}`);
 
       if (!result.data) {
         return result;

@@ -6,7 +6,7 @@ import OwnClass from '@feathersjs-offline/own-common';
 const debug = require('debug')('@feathersjs-offline:ownnet:service-wrapper');
 
 class OwnnetClass extends OwnClass {
-  constructor(options = {}) {
+  constructor (options = {}) {
     debug(`Constructor started, opts = ${JSON.stringify(options)}`);
     super(options);
 
@@ -14,11 +14,9 @@ class OwnnetClass extends OwnClass {
     this.__forTestingOnly = super._processQueuedEvents;
 
     debug('  Done.');
-    return this;
   }
 
-  async _processQueuedEvents() {
-//    const debug = (...args) => console.log(...args);
+  async _processQueuedEvents () {
     debug(`processQueuedEvents (${this.type}) entered (IPallowed=${this.internalProcessingAllowed()}, pQActive=${this.pQActive})`);
     if (!this.internalProcessingAllowed() || this.pQActive) {
       debug(`processingQueuedEvents: leaving  internalProcessing (aIP=${this.aIP}), pQActive=${this.pQActive}`);
@@ -44,9 +42,9 @@ class OwnnetClass extends OwnClass {
     let stop = false;
 
     // For own-net we only send one accumulated record to the server - let's accumulate!
-    // Remember, we already have the accumulated record on file in localService.get, so all we
-    // need to do, it to look out for create and remove - the rest we remoteService.patch!
-    let eventName, record, arg1, arg2, arg3;
+    // Remember, we already have the accumulated record on file in localService, so all we
+    // need to do, is to look out for create and remove - the rest we remoteService.patch!
+    let eventName; let record; let arg1; let arg2; let arg3;
     do {
       while (i < store.length && store[i].record.uuid === store[j].record.uuid) {
         ({ eventName, record, arg1, arg2, arg3 } = store[i]);
@@ -60,17 +58,14 @@ class OwnnetClass extends OwnClass {
         i++; // get next possible record
       }
       if (ids.length) {
-                          try{
-        let res, err;
+        let res; let err;
         if (store[j].eventName !== 'create')
           [err, res] = await to(self.localService.get(store[j].record[this.id]));
         else
           res = store[j].record;
         let action = ev.includes('create') ? 'create' : 'patch';
         netOps.push(_accEvent(this.id, action, res, arg1, arg2, arg3, ids));
-      } catch (err) {
-        console.error(`******* ERROR : ${err.name}, ${err.message} i=${i}, j=${j}, store.length=${store.length}, store=${JSON.stringify(store[j].record)}`);
-      }
+
         if (i < store.length) {
           ev = [ store[i].eventName ];
           ids = [ store[i].id ];
@@ -95,8 +90,7 @@ class OwnnetClass extends OwnClass {
               if (event !== 'remove') {
                 return await self.localService.patch(res[self.id], res)
                   .catch(err => {
-                    debug(mdebug+' (copy)');
-                    debug(`  localService.patch(${JSON.stringify(res[self.id])}, ${JSON.stringify(res)})`);
+                    debug(mdebug+` (copy)\n  localService.patch(${JSON.stringify(res[self.id])}, ${JSON.stringify(res)})`);
                     return true;
                   })
                   .then(() => { return false; })
@@ -109,7 +103,7 @@ class OwnnetClass extends OwnClass {
               return false;
             });
         })
-        .catch(err => {
+//        .catch(err => {
           // if (err.name === 'Timeout' && err.type === 'FeathersError') {
           //   // We silently accept - we probably lost connection
           // }
@@ -118,12 +112,12 @@ class OwnnetClass extends OwnClass {
           //     // This record has probably never been on server (=remoteService), so we silently ignore the error
           //   }
           //   else {
-          if (err.name !== 'Timeout' && event !== 'remove' && el.onServerAt !== 0) {
-            return false;
-          }
+//          if (err.name !== 'Timeout' /* && event !== 'remove' && el.onServerAt !== 0 */) {
+//            return false;
+//          }
           // }
-          return false;
-        });
+//          return false;
+//        });
     }));
     // stop = result.reduce((pv, cv, ci, arr) => stop || arr[ci]);
 
@@ -134,12 +128,11 @@ class OwnnetClass extends OwnClass {
     }
 
 }
-function init(options) {
+function init (options) {
   return new OwnnetClass(options);
 }
 
 let Ownnet = init;
-
 
 /**
  * A ownnetWrapper is a CLIENT adapter wrapping for FeathersJS services extending them to
@@ -150,10 +143,10 @@ let Ownnet = init;
  * import memory from 'feathers-memory';
  * import { ownnetWrapper } from '(at)feathersjs-offline/ownnet';
  * const app = feathers();
- * app.use('/testpath', memory({id: 'uuid', clearStorage: true}));
+ * app.use('/testpath', memory({id: 'uuid'}));
  * ownnetWrapper(app, '/testpath');
  * app.service('testpath').create({givenName: 'James', familyName: 'Bond'})
- * ...
+ * // ...
  * ```
  *
  * It works in co-existence with it's SERVER counterpart, RealtimeServiceWrapper.
@@ -163,9 +156,9 @@ let Ownnet = init;
  * @param {object} options The options for the serviceAdaptor AND the OwnnetWrapper
  *
  */
-function ownnetWrapper(app, path, options = {}) {
-  debug(`OwnnetWrapper started on path '${path}'`)
-  if (!(app && app['version'] && app['service'] && app['services']))
+function ownnetWrapper (app, path, options = {}) {
+  debug(`ownnetWrapper started on path '${path}'`)
+  if (!(app && app.version && app.service && app.services))
     throw new errors.Unavailable(`The FeathersJS app must be supplied as first argument`);
 
   let location = stripSlashes(path);
@@ -187,10 +180,9 @@ module.exports = { init, Ownnet, ownnetWrapper };
 
 init.Service = OwnnetClass;
 
-
 // Helper
 
-function _accEvent(idName, event, el, arg1, arg2, arg3, ids) {
+function _accEvent (idName, event, el, arg1, arg2, arg3, ids) {
   let id = el[idName];
   switch (event) {
     case 'create':

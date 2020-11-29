@@ -8,7 +8,7 @@ import errors from '@feathersjs/errors';
  * @param {string} service The service to be hooked into
  * @param {string} service method to fail install hook for
  */
-function failOnceHook(type, serviceName, service, method) {
+function failOnceHook (type, serviceName, service, method) {
   let triggered = false;
 
   service.hooks({

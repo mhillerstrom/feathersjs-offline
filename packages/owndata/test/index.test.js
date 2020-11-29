@@ -1,17 +1,16 @@
 //'use strict';
-const { expect } = require('chai');
 const feathers = require('@feathersjs/feathers');
 const errors = require('@feathersjs/errors');
 const adapterTests = require('@feathersjs-offline/own-common/test/helpers/adapter.test');
 const wrapperBasic = require('@feathersjs-offline/own-common/test/helpers/wrapper-basic.test');
 const ownWrapper = require('@feathersjs-offline/own-common/test/helpers/own-wrapper.test');
 const syncTests = require('@feathersjs-offline/own-common/test/helpers/sync.test');
+const eventsTests = require('@feathersjs-offline/own-common/test/helpers/events.test');
 const { Owndata, owndataWrapper } = require('../src');
 
 let package = 'owndata';
 let verbose = false;
 let app;
-
 
 describe(`${package}Wrapper tests`, () => {
   app = feathers();
@@ -23,5 +22,6 @@ describe(`${package}Wrapper tests`, () => {
   wrapperBasic(`${package}Wrapper basic functionality`, app, errors, owndataWrapper, 'wrapperBasic', verbose);
   ownWrapper(`${package}Wrapper specific functionality`, app, errors, owndataWrapper, 'ownWrapper', verbose);
   syncTests(`${package}Wrapper sync functionality`, app, errors, Owndata, 'syncTests', verbose);
+  eventsTests(`${package}Wrapper events functionality`, app, errors, owndataWrapper, 'wrapperEvents', verbose);
 
 })

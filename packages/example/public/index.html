@@ -5,7 +5,34 @@
   <title>A simple FeathersJS message generator application</title>
   <meta name="description" content="A FeathersJS server">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/feathers-chat@4.0.0/public/base.css">
+<!--
+  <meta http-equiv="Content-Security-Policy" content="
+      default-src 'self';
+      script-src 'report-sample' 'self';
+      style-src 'report-sample' 'self';
+      object-src 'none';
+      base-uri 'self';
+      connect-src 'self';
+      font-src 'self';
+      frame-src 'self';
+      img-src 'self';
+      manifest-src 'self';
+      media-src 'self';
+      report-uri https://5fb8d0a947ef7c02ddc10c35.endpoint.csper.io/;
+      worker-src 'none';
+  ">
+<meta http-equiv="Content-Security-Policy" content="
+    default-src      cdn.jsdelivr.net  'self' data: 'unsafe-inline' 'unsafe-eval';
+    script-src       cdn.jsdelivr.net  'self'       'unsafe-inline' 'unsafe-eval';
+    script-src-elem  cdn.jsdelivr.net  'self'       'unsafe-inline' 'unsafe-eval';
+    connect-src                        'self';
+  ">
+-->
+<meta http-equiv="Content-Security-Policy" content="
+default-src  * data: blob: filesystem: 'unsafe-inline' 'unsafe-eval';
+script-src * data: blob: filesystem: 'unsafe-inline' 'unsafe-eval';
+">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/feathers-chat@4.0.0/public/base.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/feathers-chat@4.0.0/public/chat.css">
 </head>
 
@@ -242,9 +269,10 @@
     </div>
   </div>
 
-  <script src="https://unpkg.com/regenerator-runtime@0.13.1/runtime.js"></script>
-  <script src="https://unpkg.com/@feathersjs/client@4.5.8/dist/feathers.js""></script>
-    <script src=" https://unpkg.com/socket.io-client@2.3.0/dist/socket.io.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/regenerator-runtime@0.13.1"></script>
+<script src="https://cdn.jsdelivr.net/npm/@feathersjs/client@4.5.8/dist/feathers.min.js""></script>
+<script src="https://cdn.jsdelivr.net/npm/socket.io-client"></script>
+  <!-- <script src="https://cdn.jsdelivr.net/npm/socket.io-client@2.3.0/dist/socket.io.js"></script> -->
   <script src="./feathersjs-offline-owndata.js"></script>
   <script src="./feathersjs-offline-ownnet.js"></script>
   <script defer="defer" src="./app.js"></script>

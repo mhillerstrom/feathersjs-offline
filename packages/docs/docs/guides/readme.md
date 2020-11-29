@@ -1,6 +1,6 @@
 # Getting started with FeathersJS Offline
 
-Welcome to the FeathersJS Offline guides! This is the place to find all the resources to get started with Feathers.
+Welcome to the FeathersJS Offline guides! This is the place to find all the resources to get started with Feathers Offline.
 
 Much of the information herein is adopted directly from the [Feathers Guides](https://docs.feathersjs.com/guides). Please refer to this when seeking information beyond the scope of these guides.
 

@@ -10,7 +10,7 @@ import errors from '@feathersjs/errors';
  * @param {string} service The service to be hooked into
  * @param {boolean} allowFail Will we allow the usage of _fail? (Default false)
  */
-function setUpHooks(type, serviceName, service, allowFail = false, verbose = false) {
+function setUpHooks (type, serviceName, service, allowFail = false, verbose = false) {
 
   service.hooks({
     before: {

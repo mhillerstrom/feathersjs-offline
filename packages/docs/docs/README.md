@@ -4,10 +4,10 @@ sidebar: false
 ---
 
 
-<img style="display:block; width: 400px; margin: 0 auto; margin-top: 4em; margin-bottom: 2em;" src="/img/feathers-offline-logo-wide.png" alt="FeathersJS Offline logo" />
+<img style="display:block; width: 400px; margin: 0 auto; margin-top: 4em; margin-bottom: 2em;" src="/img/feathers-offline-first.png" alt="FeathersJS Offline logo" />
 
 
-Welcome to the FeathersJS real-time offline-first documentation! We have included some of the introductory documentation from the Feathers offical documentation to minimize you jumping back and forth between documents. Otherwise we link to the Feathers documentation whenever necessary.
+> Welcome to the FeathersJS real-time offline-first documentation! We have included some of the introductory documentation from the Feathers offical documentation to minimize you jumping back and forth between documents. Otherwise we link to the Feathers documentation whenever necessary.
 
 Feathers is a lightweight web-framework for creating real-time applications and REST APIs using JavaScript or TypeScript. Feathers can interact with any backend technology, supports over a dozen databases and works with any frontend technology like React, VueJS, Angular, React Native, Android or iOS. FeathersJS Offline adds offline-first capability with automatic synchronization to this impressive stack.
 

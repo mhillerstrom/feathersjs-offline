@@ -35,6 +35,8 @@
     "url": "https://github.com/mhillerstrom/feathersjs-offline/issues"
   },
   "dependencies": {
+    "@feathersjs/adapter-commons": "^4.5.7",
+    "@feathersjs/commons": "^4.5.9",
     "@feathersjs/errors": "^4.5.9",
     "@feathersjs-offline/common": "^0.0.1",
     "debug": "^4.2.0"

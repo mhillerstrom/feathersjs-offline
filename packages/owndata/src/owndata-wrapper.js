@@ -5,7 +5,6 @@ import OwnClass from '@feathersjs-offline/own-common';
 
 const debug = require('debug')('@feathersjs-offline:owndata:service-wrapper');
 
-
 class OwndataClass extends OwnClass {
   constructor (opts = {}) {
     debug(`Constructor started, newOpts = ${JSON.stringify(opts)}`);
@@ -17,7 +16,6 @@ class OwndataClass extends OwnClass {
     debug('  Done.');
     return this;
   }
-
 
   async _processQueuedEvents () {
     debug(`processQueuedEvents (${this.type}) entered`);
@@ -38,35 +36,28 @@ class OwndataClass extends OwnClass {
     let stop = false;
     while (store.length && !stop) {
       let el = store.shift();
-console.log(`el = ${JSON.stringify(el)}`);
       let { eventName, record, arg1, arg2 = null, arg3 = null, id } = el;
-console.log(`eventName = ${eventName}, record = ${JSON.stringify(record)}, arg1 = ${JSON.stringify(arg1)}, arg2 = ${JSON.stringify(arg2)}, arg3 = ${JSON.stringify(arg3)}, id = ${id}`);
       ({eventName, el, arg1, arg2, arg3, id} = _accEvent(this.id, eventName, record, arg1, arg2, arg3, id));
-console.log(`eventName = ${eventName}, el = ${JSON.stringify(el)}, arg1 = ${JSON.stringify(arg1)}, arg2 = ${JSON.stringify(arg2)}, arg3 = ${JSON.stringify(arg3)}, id = ${id}`);
 
-      try {
-        debug(`    processing: event=${eventName}, arg1=${JSON.stringify(arg1)}, arg2=${JSON.stringify(arg2)}, arg3=${JSON.stringify(arg3)}`)
-        await self.remoteService[eventName](arg1, arg2, arg3)
-          .then(async res => {
+      debug(`    processing: event=${eventName}, arg1=${JSON.stringify(arg1)}, arg2=${JSON.stringify(arg2)}, arg3=${JSON.stringify(arg3)}`)
+      await self.remoteService[eventName](arg1, arg2, arg3)
+        .then(async res => {
+          await to(self.localQueue.remove(id));
+          if (eventName !== 'remove') {
+            // Let any updates to the document/item on server reflect on the local DB
+            await to(self.localService.patch(res[self.id], res));
+          }
+        })
+        .catch(async err => {
+          if (record.onServerAt === 0  &&  eventName === 'remove') {
+            // This record has probably never been on server (=remoteService), so we silently ignore the error
             await to(self.localQueue.remove(id));
-            if (event !== 'remove') {
-              // Let any updates to the document/item on server reflect on the local DB
-              await to(self.localService.patch(res[self.id], res));
-            }
-          })
-          .catch(async err => {
-            if (record.onServerAt === 0  &&  eventName === 'remove') {
-              // This record has probably never been on server (=remoteService), so we silently ignore the error
-              await to(self.localQueue.remove(id));
-            }
-            else {
-              // The connection to the server has probably been cut - let's continue at another time
-              stop = true;
-            }
-          });
-      } catch (error) {
-        console.error(`Got ERROR ${JSON.stringify(error.name, null, 2)}, ${JSON.stringify(error.message, null, 2)}`);
-      }
+          }
+          else {
+            // The connection to the server has probably been cut - let's continue at another time
+            stop = true;
+          }
+        });
     }
 
     debug(`  processing ended, stop=${stop}`);
@@ -78,13 +69,11 @@ console.log(`eventName = ${eventName}, el = ${JSON.stringify(el)}, arg1 = ${JSON
 
 };
 
-
 function init (options) {
   return new OwndataClass(options);
 }
 
 let Owndata = init;
-
 
 /**
  * A owndataWrapper is a CLIENT adapter wrapping for FeathersJS services extending them to
@@ -95,10 +84,10 @@ let Owndata = init;
  * import memory from 'feathers-memory';
  * import { owndataWrapper } from '(at)feathersjs-offline/owndata';
  * const app = feathers();
- * app.use('/testpath', memory({id: 'uuid', clearStorage: true}));
+ * app.use('/testpath', memory({id: 'uuid'}));
  * owndataWrapper(app, '/testpath');
  * app.service('testpath').create({givenName: 'James', familyName: 'Bond'})
- * ...
+ * // ...
  * ```
  *
  * It works in co-existence with it's SERVER counterpart, RealtimeServiceWrapper.
@@ -110,7 +99,7 @@ let Owndata = init;
  */
 function owndataWrapper (app, path, options = {}) {
   debug(`owndataWrapper started on path '${path}'`)
-  if (!(app && app['version'] && app['service'] && app['services']) ) {
+  if (!(app && app.version && app.service && app.services) ) {
     throw new errors.Unavailable(`The FeathersJS app must be supplied as first argument`);
   }
 
@@ -133,10 +122,9 @@ module.exports = { init, Owndata, owndataWrapper };
 
 init.Service = OwndataClass;
 
-
 // Helper
 
-function _accEvent(idName, eventName, el, arg1, arg2, arg3, id) {
+function _accEvent (idName, eventName, el, arg1, arg2, arg3, id) {
   let elId = el[idName];
   switch (eventName) {
     case 'create':
