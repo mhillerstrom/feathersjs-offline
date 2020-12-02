@@ -7,9 +7,7 @@ const memory = require('feathers-memory');
 const io = require('socket.io-client');
 const delay = require('./delay');
 const setUpHooks = require('./setup-hooks');
-const RealtimeServiceWrapper = require('@feathersjs-offline/server');
-
-const RealtimeService = RealtimeServiceWrapper(memory);
+const { realtimeWrapper } = require('../../../server/src');
 
 let app;
 let service;
@@ -41,7 +39,8 @@ module.exports = (desc, _app, _errors, wrapperFn, serviceName, verbose, isBaseCl
 
       rApp = feathers()
         .configure(socketio())
-        .use(serviceName, RealtimeService({ multi: true, id: 'id' }));
+        .use(serviceName, memory({ multi: true, id: 'id' }));
+      realtimeWrapper(rApp, serviceName);
       remote = rApp.service(serviceName);
       setUpHooks('SERVER', serviceName, remote, true, verbose);
 

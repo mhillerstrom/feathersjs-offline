@@ -1,7 +1,7 @@
-// Make sure the feathersjs-offline own-data, own-net, and server´ modules are available
+// Make sure the feathersjs-offline wrappers for own-data, own-net, and server are available
 /* eslint-disable no-undef */
-if (!(feathersjsOfflineOwndata && feathersjsOfflineOwnnet)) {
-  alert('Could not load \'feathers-offline\' libraries. Please check.');
+if (!(feathersjsOfflineClient)) {
+  alert('Could not load the \'feathersjs-offline\' library. Please check.');
 }
 
 // Identify this browser tab (uniquely) so we can have more than one tab open
@@ -60,8 +60,8 @@ const serviceName = 'messages';
 
 const serviceWrapper = {
   'standard': (app, path, o) => {}, // Dummy wrapper
-  'owndata': feathersjsOfflineOwndata.owndataWrapper,
-  'ownnet': feathersjsOfflineOwnnet.ownnetWrapper
+  'owndata': feathersjsOfflineClient.owndataWrapper,
+  'ownnet': feathersjsOfflineClient.ownnetWrapper
 }
 
 
@@ -89,7 +89,7 @@ async function prepareService () {
 
   // Register service path with correct wrapper (no-op for standard)
   if (serviceType !== 'standard') {
-    app.use(serviceName, serviceWrapper[serviceType](app, serviceName, {
+    serviceWrapper[serviceType](app, serviceName, {
       id: 'uuid', // We use 'uuid' as our key
       storage: sessionStorage, // We want to force sessionStorage so you can run several demo apps
                                // in the same browser. By default localStorage (or file for NodeJS) is used
@@ -97,7 +97,7 @@ async function prepareService () {
       fixedName: localPrefix, // Keep same name for local service and queue (only advisable for demo)
       reuseKeys: true, // Inform 'feathers-localstorage' that we know what we are doing reusing the keys
       multi:true
-    }));
+    });
   }
 
   // Force initialization of service (somewhat a tricky trick)

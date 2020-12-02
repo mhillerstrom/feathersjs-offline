@@ -38,6 +38,9 @@ class RealtimeClass extends AdapterService {
   async setup(app, path) {
     debug(`SetUp('${path}') started`);
 
+    if (this._setupPerformed)  return;
+    this._setupPerformed = true;
+
     this.options = this.wrapperOptions;
 
     let self = this;
@@ -48,7 +51,7 @@ class RealtimeClass extends AdapterService {
     app.services[path] = self;  // Install this service instance
 
     // Get the service name and standard settings
-    this.name = path;
+    this.name = stripSlashes(path);
 
     // The initialization/setup of the localService adapter screws-up our options object
     this.options = this.wrapperOptions;
@@ -116,7 +119,7 @@ class RealtimeClass extends AdapterService {
 
   async _create(data, params = {}, ts = null) {
     const { newParams, offline } = fixParams(params);
-    debug(`Calling _create(${JSON.stringify(data)}, ${JSON.stringify(newParams)})`);
+    debug(`Calling _create(${JSON.stringify(data)}, ${JSON.stringify(params)}),  newParams=${JSON.stringify(newParams)}`);
     if (Array.isArray(data)) {
       const ts = new Date();
       return Promise.all(data.map(current => this._create(current, newParams, ts)));
@@ -137,7 +140,9 @@ class RealtimeClass extends AdapterService {
 
     newData.onServerAt = ts;
 
-    return this.remoteService.create(newData, params)
+    let myParams = Object.assign({}, params, { dummy: 123});
+
+    return this.remoteService.create(newData, myParams)
       .then(this._strip)
       .then(this._select(newParams));
     }
@@ -285,9 +290,12 @@ function realtimeWrapper(app, path, options = {}) {
   }
 
   let opts = Object.assign({}, old.options, options);
-  app.use(location, Realtime(opts));
-  app.services[location].options = opts;
-  app.services[location]._listenOptions();
+  let service = Realtime(opts, app);
+  app.use(location, service);
+  service = app.service(location);
+  service.options = opts;
+  service._listenOptions();
+  service.remoteService = old;
 
   return app.services[location];
 }

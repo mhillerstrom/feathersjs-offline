@@ -1,14 +1,13 @@
 const feathers = require('@feathersjs/feathers');
 const socketio = require('@feathersjs/socketio');
 const memory = require('feathers-memory');
-const RealtimeServiceWrapper = require('@feathersjs-offline/server');
-
-const RealtimeService = RealtimeServiceWrapper(memory);
+const { realtimeWrapper } = require('../../../server/src');
 
 module.exports = function (path, verbose) {
   const app = feathers()
     .configure(socketio())
-    .use(path, new RealtimeService({multi: true}))
+    .use(path, memory({multi: true}));
+    realtimeWrapper(app, path);
 
   const service = app.service(path);
 

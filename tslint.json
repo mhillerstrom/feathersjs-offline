@@ -5,18 +5,18 @@
   ],
   "linterOptions": {
     "exclude": [
-      "packages/common/lib/**",
+      "packages/common/lib/*",
       "packages/docs/**",
-      "packages/optimistic-mutation/lib/**",
-      "packages/owndata/lib/**",
-      "packages/ownnet/lib/**",
-      "packages/server/lib/**",
-      "packages/snapshot/lib/**",
-      "packages/example/lib/**",
-      "packages/example/public/**",
+      "packages/owndata/lib/*",
+      "packages/ownnet/lib/*",
+      "**/packages/server/lib/*",
+      "packages/snapshot/lib/*",
+      "**/packages/utils/lib/*",
+      "packages/example/lib/*",
+      "packages/example/public/*",
       "**/node_modules/**",
       "**/coverage/**",
-      "**/dist/**",
+      "**/dist/*",
       "**/*.dist.js",
       "**/app.js"
     ]

@@ -8,7 +8,6 @@
     "mobile",
     "offline-first",
     "realtime"
-
   ],
   "author": "Michael Hillerström <michael(at)hillerstrom.name>",
   "homepage": "https://github.com/mhillerstrom/feathersjs-offline/tree/master/packages/server#readme",

@@ -114,6 +114,7 @@ function owndataWrapper (app, path, options = {}) {
   app.use(location, Owndata(opts));
   app.services[location].options = opts;
   app.services[location]._listenOptions();
+  app.services[location].remoteService = old;
 
   return app.services[location];
 }

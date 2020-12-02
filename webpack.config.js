@@ -5,7 +5,7 @@ const { merge } = require('webpack-merge');
 
 function createConfig (name, isProduction = false) {
   const output = name === 'index' ? 'feathersjs-offline' : 'feathersjs-offline-' + name;
-  const entry = name === 'server' ? 'server' : 'index';
+  const entry = 'index';
   const commons = {
     entry: `./packages/${name}/lib/${entry}.js`,
     node: {
@@ -41,6 +41,7 @@ function createConfig (name, isProduction = false) {
     mode: 'development',
     devtool: 'source-map'
   };
+
   const production = {
     mode: 'production',
     output: {
@@ -66,6 +67,64 @@ function createConfig (name, isProduction = false) {
   return merge(commons, isProduction ? production : dev);
 }
 
+function createMaster (packages, isProduction = false) {
+  const output = 'feathersjs-offline';
+  const entry = 'index';
+  const entries = {};
+  packages.map(v => entries[v] = `./packages/${v}/lib/index.js`);
+  // const entries = [];
+  // packages.map(v => entries.push(`./packages/${v}/lib/index.js`));
+  // entries = { 'feathersjs-offline' : entries }
+console.log(`entries=${JSON.stringify(entries)}`);
+  const commons = {
+    entry: entries,
+    node: {
+      // net: 'empty',
+      // tls: 'empty',
+      // dns: 'empty',
+      // module: 'empty',
+      fs: 'empty'
+    },
+    output: {
+      library: `feathersjsOffline`,
+      libraryTarget: 'var', // 'umd',
+      globalObject: 'this',
+      path: path.resolve(__dirname, 'dist'),
+      filename: `${output}.js`
+    },
+    // resolve: {
+    //   mainFields: ["browser", "main", "module"],
+    // },
+    module: {
+      rules: [{
+        test: /\.js/,
+        exclude: /node_modules\/(?!(@feathersjs|debug))/,
+        loader: 'babel-loader',
+        options: {
+          presets: ['@babel/preset-env']
+        }
+      }]
+    }
+  };
+
+  const dev = {
+    mode: 'development',
+    devtool: 'source-map'
+  };
+
+  const production = {
+    mode: 'production',
+    output: {
+      filename: `${output}.min.js`
+    },
+    optimization: {
+      minimize: true
+    }
+  };
+
+  return merge(commons, isProduction ? production : dev);
+}
+
 module.exports = [
   // createConfig('index'),
   // createConfig('index', true),
@@ -80,5 +139,9 @@ module.exports = [
   createConfig('server'),
   createConfig('server', true),
   createConfig('snapshot'),
-  createConfig('snapshot', true)
+  createConfig('snapshot', true),
+  createConfig('client'),
+  createConfig('client', true)
+  // createMaster(['server', 'owndata', 'ownnet']),
+  // createMaster(['server', 'owndata', 'ownnet'], true)
 ];
