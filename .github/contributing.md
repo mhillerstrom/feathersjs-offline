@@ -1,6 +1,6 @@
-# Contributing to Feathers
+# Contributing to FeathersJS-Offline
 
-Thank you for contributing to Feathers! :heart: :tada:
+Thank you for contributing to FeathersJS-Offline! :heart: :tada:
 
 This repo is the main core and where most issues are reported. Feathers embraces modularity and is broken up across many repos.
 

@@ -6,10 +6,10 @@ here](https://github.com/feathersjs/feathers/blob/master/.github/contributing.md
 - [ ] Tell us what broke. The more detailed the better.
 - [ ] If you can, please create a simple example that reproduces the issue and link to a gist, jsbin, repo, etc.
 
-### Expected behavior
+### Expected behaviour
 Tell us what should happen
 
-### Actual behavior
+### Actual behaviour
 Tell us what happens instead
 
 ### System configuration

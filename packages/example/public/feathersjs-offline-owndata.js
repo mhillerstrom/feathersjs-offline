@@ -1,1 +1,0 @@
-../../../dist/feathersjs-offline-owndata.js
