@@ -1,1 +1,0 @@
-../../../dist/feathersjs-offline-client.js
